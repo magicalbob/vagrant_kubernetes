@@ -28,3 +28,8 @@ vagrant ssh -c '. /home/vagrant/.py3kubespray/bin/activate && ansible all -i /ho
 
 # Do install of kubernetes
 vagrant ssh -c '. /home/vagrant/.py3kubespray/bin/activate && cd /home/vagrant/kubespray && ansible-playbook -i /home/vagrant/kubespray/inventory/vagrant_kubernetes/hosts.yaml --become --become-user=root /home/vagrant/kubespray/cluster.yml' node1
+
+# Now copy /root/.kube/config to vagrant user
+vagrant ssh -c 'mkdir -p /home/vagrant/.kube' node1
+vagrant ssh -c 'sudo cp /root/.kube/config /home/vagrant/.kube/config' node1
+vagrant ssh -c 'sudo chown vagrant:vagrant /home/vagrant/.kube/config' node1
