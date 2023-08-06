@@ -15,6 +15,12 @@ Vagrant.configure("2") do |config|
   (1..5).each do |i|
     config.vm.define "node#{i}" do |node|
       node.vm.network "private_network", ip: "192.168.200.20#{i}"
+
+      # Provision the VM with shell script
+      node.vm.provision "shell", inline: <<-SHELL
+        sudo apt-get update
+        sudo apt-get upgrade -y
+      SHELL
     end
   end
 
