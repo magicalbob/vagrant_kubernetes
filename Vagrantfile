@@ -7,8 +7,8 @@ Vagrant.configure("2") do |config|
   config.vm.box_url = "bento/ubuntu-22.04"
   config.vm.provider "virtualbox" do |vb|
     vb.gui = false
-    vb.memory = "2048"
-    vb.cpus = 2
+    vb.memory = "8096"
+    vb.cpus = 4
   end
 
   # Create 5 VMs with a private network and sequential IP addresses
