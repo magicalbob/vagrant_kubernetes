@@ -11,8 +11,8 @@ vagrant ssh -c 'cat /home/vagrant/.ssh/id_rsa.pub >> /home/vagrant/.ssh/authoriz
 vagrant ssh -c 'cat /home/vagrant/.ssh/id_rsa.pub >> /home/vagrant/.ssh/authorized_keys' node3
 vagrant ssh -c 'cat /home/vagrant/.ssh/id_rsa.pub >> /home/vagrant/.ssh/authorized_keys' node4
 vagrant ssh -c 'cat /home/vagrant/.ssh/id_rsa.pub >> /home/vagrant/.ssh/authorized_keys' node5
-echo uptime|ssh -o StrictHostKeyChecking=no 192.168.200.201
-echo uptime|ssh -o StrictHostKeyChecking=no 192.168.200.202
-echo uptime|ssh -o StrictHostKeyChecking=no 192.168.200.203
-echo uptime|ssh -o StrictHostKeyChecking=no 192.168.200.204
-echo uptime|ssh -o StrictHostKeyChecking=no 192.168.200.205
+vagrant ssh -c 'echo uptime|ssh -o StrictHostKeyChecking=no 192.168.200.201' node1
+vagrant ssh -c 'echo uptime|ssh -o StrictHostKeyChecking=no 192.168.200.202' node1
+vagrant ssh -c 'echo uptime|ssh -o StrictHostKeyChecking=no 192.168.200.203' node1
+vagrant ssh -c 'echo uptime|ssh -o StrictHostKeyChecking=no 192.168.200.204' node1
+vagrant ssh -c 'echo uptime|ssh -o StrictHostKeyChecking=no 192.168.200.205' node1
