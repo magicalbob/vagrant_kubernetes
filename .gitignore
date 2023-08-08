@@ -2,4 +2,4 @@ insecure_public_key
 .vagrant
 Vagrantfile
 hosts.yaml
-./vagrant_kubernetes.log
+vagrant_kubernetes.log
