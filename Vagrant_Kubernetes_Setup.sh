@@ -11,6 +11,68 @@ envsubst < Vagrantfile.template > Vagrantfile
 # Bring up all the nodes
 vagrant up
 
+# Generate the hosts.yaml content
+HOSTS_YAML="all:
+  hosts:"
+
+for i in $(seq 1 $TOTAL_NODES); do
+  HOSTS_YAML+="
+    node$i:
+      ansible_host: 192.168.200.20$i
+      ip: 192.168.200.20$i
+      access_ip: 192.168.200.20$i"
+done
+
+HOSTS_YAML+="
+  children:
+    kube_control_plane:
+      hosts:"
+
+for i in $(seq 1 $TOTAL_NODES); do
+  HOSTS_YAML+="
+        node$i:"
+done
+
+HOSTS_YAML+="
+    kube_node:
+      hosts:"
+
+for i in $(seq $((TOTAL_NODES + 1)) $((2 * TOTAL_NODES))); do
+  HOSTS_YAML+="
+        node$i:"
+done
+
+HOSTS_YAML+="
+    etcd:
+      hosts:"
+for i in $(seq 1 $TOTAL_NODES); do
+  HOSTS_YAML+="
+        node$i:"
+done
+
+HOSTS_YAML+="
+    k8s_cluster:
+      children:
+        kube_control_plane:"
+for i in $(seq 1 $TOTAL_NODES); do
+  HOSTS_YAML+="
+        node$i:"
+done
+
+HOSTS_YAML+="
+        kube_node:"
+for i in $(seq $((TOTAL_NODES + 1)) $((2 * TOTAL_NODES))); do
+  HOSTS_YAML+="
+        node$i:"
+done
+
+HOSTS_YAML+="
+    calico_rr:
+      hosts: {}"
+
+# Write the hosts.yaml content to the file
+echo "$HOSTS_YAML" > hosts.yaml
+
 # Set up ssh from node 1 to nodes 1 through 5
 ./setup_ssh.sh
 
