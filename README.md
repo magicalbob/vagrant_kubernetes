@@ -3,7 +3,7 @@ Vagrant_Kubernetes
 
 Sets up a cluster of vagrant nodes, then uses `kubespray` to install a k8s cluster on them.
 
-Script `Vagrant_Kubernetes_Setup.sh` co-odinates eveything.
+Script `Vagrant_Kubernetes_Setup.sh` co-odinates eveything. Script `run_vagrant_kubernetes.sh` it as a background job and logs the output to `./vagrant_kubernetes.log`.
 
 Just use `vagrant destroy -f` once you're finished with the cluster.
 
