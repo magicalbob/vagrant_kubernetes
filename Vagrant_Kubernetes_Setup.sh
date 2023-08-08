@@ -28,7 +28,7 @@ HOSTS_YAML+="
     kube_control_plane:
       hosts:"
 
-for i in $(seq 1 $TOTAL_NODES); do
+for i in $(seq 1 $CONTROL_NODES); do
   HOSTS_YAML+="
         node$i:"
 done
@@ -37,7 +37,7 @@ HOSTS_YAML+="
     kube_node:
       hosts:"
 
-for i in $(seq $((TOTAL_NODES + 1)) $((2 * TOTAL_NODES))); do
+for i in $(seq $((CONTROL_NODES + 1)) $((TOTAL_NODES))); do
   HOSTS_YAML+="
         node$i:"
 done
@@ -45,7 +45,7 @@ done
 HOSTS_YAML+="
     etcd:
       hosts:"
-for i in $(seq 1 $TOTAL_NODES); do
+for i in $(seq 1 $CONTROL_NODES); do
   HOSTS_YAML+="
         node$i:"
 done
@@ -53,20 +53,8 @@ done
 HOSTS_YAML+="
     k8s_cluster:
       children:
-        kube_control_plane:"
-for i in $(seq 1 $TOTAL_NODES); do
-  HOSTS_YAML+="
-        node$i:"
-done
-
-HOSTS_YAML+="
-        kube_node:"
-for i in $(seq $((TOTAL_NODES + 1)) $((2 * TOTAL_NODES))); do
-  HOSTS_YAML+="
-        node$i:"
-done
-
-HOSTS_YAML+="
+        kube_control_plane:
+        kube_node:
     calico_rr:
       hosts: {}"
 
