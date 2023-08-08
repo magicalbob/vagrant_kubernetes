@@ -1,4 +1,4 @@
 {
-  "control_nodes": 3,
-  "worker_nodes": 3
+  "control_nodes": 1,
+  "worker_nodes": 1
 }
