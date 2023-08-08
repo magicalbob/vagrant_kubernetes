@@ -73,8 +73,27 @@ HOSTS_YAML+="
 # Write the hosts.yaml content to the file
 echo "$HOSTS_YAML" > hosts.yaml
 
-# Set up ssh from node 1 to nodes 1 through 5
-./setup_ssh.sh
+# Set up ssh between the nodes
+# First copy the insecure_private_key to node1 (which is the only node that needs it)
+vagrant upload ~/.vagrant.d/insecure_private_key /home/vagrant/.ssh/id_rsa node1
+
+# Now create the public key from it
+ssh-keygen -y -f ~/.vagrant.d/insecure_private_key > ./insecure_public_key
+
+# Copy the public key to each node
+for i in $(seq 1 $TOTAL_NODES); do
+  vagrant upload ./insecure_public_key /home/vagrant/.ssh/id_rsa.pub node$i
+done
+
+# Append the public key to the authorized_keys file on each node
+for i in $(seq 1 $TOTAL_NODES); do
+  vagrant ssh -c 'cat /home/vagrant/.ssh/id_rsa.pub >> /home/vagrant/.ssh/authorized_keys' node$i
+done
+
+# Do an intial ssh to each node (including node1) from node1 
+for i in $(seq 1 $TOTAL_NODES); do
+  vagrant ssh -c "echo uptime|ssh -o StrictHostKeyChecking=no 192.168.200.20${i}" node1
+done
 
 # Clone the project to do the actual kubernetes cluster setup
 vagrant ssh -c 'rm -rf /home/vagrant/kubespray' node1
