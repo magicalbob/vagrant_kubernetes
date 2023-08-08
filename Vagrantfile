@@ -11,8 +11,8 @@ Vagrant.configure("2") do |config|
     vb.cpus = 4
   end
 
-  # Create 5 VMs with a private network and sequential IP addresses
-  (1..5).each do |i|
+  # Create 6 VMs with a private network and sequential IP addresses
+  (1..6).each do |i|
     config.vm.define "node#{i}" do |node|
       node.vm.network "private_network", ip: "192.168.200.20#{i}"
 
