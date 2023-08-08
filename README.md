@@ -3,10 +3,10 @@ Vagrant_Kubernetes
 
 Sets up a cluster of vagrant nodes, then uses `kubespray` to install a k8s cluster on them.
 
-Scripts `Vagrant_Kubernetes_Setup.sh` co-odinates eveything.
+Script `Vagrant_Kubernetes_Setup.sh` co-odinates eveything.
 
 Just use `vagrant destroy -f` once you're finished with the cluster.
 
-By default there are 2 instances in the cluster, 1 in the control plane and 1 worker node. Each instance has 4 CPUs and 8GB RAM. The number of control plane nodes and worker nodes are defined in `config.json`.
+The number of control plane nodes (default 1) and worker nodes (default 1) are defined in `config.json`, along with RAM size (default 2048) and cpu counts (default 2). Each node is the same size.
 
 `Vagrant_Kubernetes_Setup.sh` makes use of `~/.vagrant.d/insecure_private_key` to allow `node1` to ssh freely to each of the nodes (including itself). 

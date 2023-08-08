@@ -1,4 +1,6 @@
 {
   "control_nodes": 1,
-  "worker_nodes": 1
+  "worker_nodes": 1,
+  "ram_size": 2048,
+  "cpu_count" : 2
 }
