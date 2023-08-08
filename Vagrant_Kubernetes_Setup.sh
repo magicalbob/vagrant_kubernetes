@@ -1,5 +1,13 @@
 #!/usr/bin/env bash
 
+# Read configuration from config.json
+CONTROL_NODES=$(jq -r '.control_nodes' config.json)
+WORKER_NODES=$(jq -r '.worker_nodes' config.json)
+export TOTAL_NODES=$((CONTROL_NODES + WORKER_NODES))
+
+# Create Vagrantfile from template
+envsubst < Vagrantfile.template > Vagrantfile
+
 # Bring up all the nodes
 vagrant up
 
