@@ -25,6 +25,11 @@ Vagrant.configure("2") do |config|
     end
   end
 
+  # Configure eth1 of node1 with a static IP address
+  config.vm.define "node1" do |node|
+    node.vm.network "private_network", ip: "${PUBLIC_IP}", virtualbox__intnet: "eth1"
+  end
+
   # Create a public network shared among all VMs using bridged network (enp0s25)
   config.vm.network "public_network", bridge: "enp0s25"
 end

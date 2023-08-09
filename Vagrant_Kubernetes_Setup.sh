@@ -6,6 +6,7 @@ WORKER_NODES=$(jq -r '.worker_nodes' config.json)
 export TOTAL_NODES=$((CONTROL_NODES + WORKER_NODES))
 export RAM_SIZE=$(jq -r '.ram_size' config.json)
 export CPU_COUNT=$(jq -r '.cpu_count' config.json)
+export PUBLIC_IP=$(jq -r '.public_ip' config.json)
 
 # Create Vagrantfile from template
 envsubst < Vagrantfile.template > Vagrantfile
