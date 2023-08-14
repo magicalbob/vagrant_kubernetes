@@ -55,16 +55,6 @@ for i in $(seq 1 $CONTROL_NODES); do
 done
 
 HOSTS_YAML+="
-  children:
-    kube_dns:
-      hosts:"
-
-for i in $(seq 1 $CONTROL_NODES); do
-  HOSTS_YAML+="
-        node$i:"
-done
-
-HOSTS_YAML+="
     kube_node:
       hosts:"
 
@@ -84,7 +74,6 @@ done
 HOSTS_YAML+="
     k8s_cluster:
       children:
-        kube_dns:
         kube_control_plane:
         kube_node:
     calico_rr:
