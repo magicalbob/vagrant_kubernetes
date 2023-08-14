@@ -20,8 +20,17 @@ export CPU_COUNT=$(jq -r '.cpu_count' config.json)
 # Create Vagrantfile from template
 envsubst < Vagrantfile.template > Vagrantfile
 
-# Bring up all the nodes
-vagrant up
+# Bring up all the nodes without provisioning
+vagrant up --no-provision
+
+# Loop to check if all nodes are created and then provision
+while vagrant status | grep -q "not created (virtualbox)"; do
+  echo "Not all nodes are created yet. Retrying..."
+  vagrant up --no-provision
+done
+
+# Provision all the nodes
+vagrant provision
 
 # Generate the hosts.yaml content
 HOSTS_YAML="all:
