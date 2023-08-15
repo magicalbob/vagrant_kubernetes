@@ -76,6 +76,10 @@ HOSTS_YAML+="
     k8s_cluster:
       children:
         kube_control_plane:
+        kube_dns:
+          vars:
+            kube_dns_mode: "coredns"
+            kube_dns_replicas: 2
         kube_node:
     calico_rr:
       hosts: {}"
