@@ -31,5 +31,5 @@ Vagrant.configure("2") do |config|
   end
 
   # Create a public network shared among all VMs using bridged network (enp0s25)
-  config.vm.network "public_network", bridge: "enp0s25"
+  config.vm.network "public_network", bridge: "${PRIMARY_ADAPTER}"
 end

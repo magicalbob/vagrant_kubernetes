@@ -1,5 +1,15 @@
 #!/usr/bin/env bash
 
+# Work out primary network adapter for Mac or linux
+if [[ $(uname) == "Darwin" ]]; then
+  # For macOS
+  PRIMARY_ADAPTER=$(route get default | grep interface | awk '{print $2}')
+elif [[ $(uname) == "Linux" ]]; then
+  # For Linux
+  PRIMARY_ADAPTER=$(ip route get 1 | awk '{print $5; exit}')
+fi
+echo "Primary Adapter: ${PRIMARY_ADAPTER}"
+
 # Read configuration from config.json
 CONTROL_NODES=$(jq -r '.control_nodes' config.json)
 WORKER_NODES=$(jq -r '.worker_nodes' config.json)
