@@ -123,7 +123,8 @@ vagrant ssh -c '. /home/vagrant/.py3kubespray/bin/activate && pip install -r /ho
 
 # Set up the cluster
 vagrant ssh -c 'cp -rfp /home/vagrant/kubespray/inventory/sample /home/vagrant/kubespray/inventory/vagrant_kubernetes' node1
-vagrant ssh -c 'declare -a IPS=(); for ((i=1; i<=TOTAL_NODES; i++)); do IPS+=("${PUB_NET}.20$i"); done && . /home/vagrant/.py3kubespray/bin/activate && CONFIG_FILE=/home/vagrant/kubespray/inventory/vagrant_kubernetes/hosts.yaml KUBE_VERSION=${KUBE_VERSION} python3 /home/vagrant/kubespray/contrib/inventory_builder/inventory.py "${IPS[@]}"' node1
+vagrant ssh -c "sed -i -E '/^kube_version:/s/.*/kube_version: $KUBE_VERSION/'  /home/vagrant/kubespray/inventory/vagrant_kubernetes/group_vars/k8s_cluster/k8s-cluster.yml" node1
+vagrant ssh -c 'declare -a IPS=(); for ((i=1; i<=TOTAL_NODES; i++)); do IPS+=("${PUB_NET}.20$i"); done && . /home/vagrant/.py3kubespray/bin/activate && CONFIG_FILE=/home/vagrant/kubespray/inventory/vagrant_kubernetes/hosts.yaml python3 /home/vagrant/kubespray/contrib/inventory_builder/inventory.py "${IPS[@]}"' node1
 vagrant ssh -c 'cp /vagrant/hosts.yaml /home/vagrant/kubespray/inventory/vagrant_kubernetes/hosts.yaml' node1
 vagrant ssh -c 'cp /vagrant/addons.yml /home/vagrant/kubespray/inventory/vagrant_kubernetes/group_vars/k8s_cluster/addons.yml' node1
 
