@@ -146,5 +146,8 @@ vagrant ssh -c 'mkdir -p /home/vagrant/.kube' node1
 vagrant ssh -c 'sudo cp /root/.kube/config /home/vagrant/.kube/config' node1
 vagrant ssh -c 'sudo chown vagrant:vagrant /home/vagrant/.kube/config' node1
 
+# Install helm
+vagrant ssh -c 'sudo snap install helm --classic' node1
+
 # Echo message to show script completion
 echo "Script `basename $0` has finished"
