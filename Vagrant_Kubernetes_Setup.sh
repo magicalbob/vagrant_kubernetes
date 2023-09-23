@@ -17,6 +17,7 @@ WORKER_NODES=$(jq -r '.worker_nodes' config.json)
 export TOTAL_NODES=$((CONTROL_NODES + WORKER_NODES))
 export RAM_SIZE=$(jq -r '.ram_size' config.json)
 export CPU_COUNT=$(jq -r '.cpu_count' config.json)
+export PUB_NET=$(jq -r '.pub_net' config.json)
 
 # Create Vagrantfile from template
 envsubst < Vagrantfile.template > Vagrantfile
@@ -40,9 +41,9 @@ HOSTS_YAML="all:
 for i in $(seq 1 $TOTAL_NODES); do
   HOSTS_YAML+="
     node$i:
-      ansible_host: 192.168.200.20$i
-      ip: 192.168.200.20$i
-      access_ip: 192.168.200.20$i"
+      ansible_host: ${PUB_NET}.20$i
+      ip: ${PUB_NET}.20$i
+      access_ip: ${PUB_NET}.20$i"
 done
 
 HOSTS_YAML+="
@@ -106,7 +107,7 @@ done
 
 # Do an intial ssh to each node (including node1) from node1 
 for i in $(seq 1 $TOTAL_NODES); do
-  vagrant ssh -c "echo uptime|ssh -o StrictHostKeyChecking=no 192.168.200.20${i}" node1
+  vagrant ssh -c "echo uptime|ssh -o StrictHostKeyChecking=no ${PUB_NET}.20${i}" node1
 done
 
 # Clone the project to do the actual kubernetes cluster setup
@@ -121,7 +122,7 @@ vagrant ssh -c '. /home/vagrant/.py3kubespray/bin/activate && pip install -r /ho
 
 # Set up the cluster
 vagrant ssh -c 'cp -rfp /home/vagrant/kubespray/inventory/sample /home/vagrant/kubespray/inventory/vagrant_kubernetes' node1
-vagrant ssh -c 'declare -a IPS=(192.168.200.201 192.168.200.202 192.168.200.203 192.168.200.204 192.168.200.205 192.168.200.206) && . /home/vagrant/.py3kubespray/bin/activate && CONFIG_FILE=/home/vagrant/kubespray/inventory/vagrant_kubernetes/hosts.yaml python3 /home/vagrant/kubespray/contrib/inventory_builder/inventory.py ${IPS[@]}' node1
+vagrant ssh -c 'declare -a IPS=(); for ((i=1; i<=TOTAL_NODES; i++)); do IPS+=("${PUB_NET}.20$i"); done && . /home/vagrant/.py3kubespray/bin/activate && CONFIG_FILE=/home/vagrant/kubespray/inventory/vagrant_kubernetes/hosts.yaml python3 /home/vagrant/kubespray/contrib/inventory_builder/inventory.py "${IPS[@]}"' node1
 vagrant ssh -c 'cp /vagrant/hosts.yaml /home/vagrant/kubespray/inventory/vagrant_kubernetes/hosts.yaml' node1
 vagrant ssh -c 'cp /vagrant/addons.yml /home/vagrant/kubespray/inventory/vagrant_kubernetes/group_vars/k8s_cluster/addons.yml' node1
 
