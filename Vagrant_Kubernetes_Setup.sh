@@ -149,5 +149,10 @@ vagrant ssh -c 'sudo chown vagrant:vagrant /home/vagrant/.kube/config' node1
 # Install helm
 vagrant ssh -c 'sudo snap install helm --classic' node1
 
+# Get metrics, patch it to allow insecure tls then apply it
+curl -LO https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+patch -R ./components.yaml < components.patch
+vagrant ssh -c 'kubectl apply -f /vagrant/components.yaml' node1
+
 # Echo message to show script completion
 echo "Script `basename $0` has finished"
