@@ -1,6 +1,7 @@
 insecure_public_key
 .vagrant
 Vagrantfile
+hosts
 hosts.yaml
 vagrant_kubernetes.log
 projects

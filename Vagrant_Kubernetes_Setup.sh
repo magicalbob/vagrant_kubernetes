@@ -106,6 +106,15 @@ for i in $(seq 1 $TOTAL_NODES); do
   vagrant ssh -c 'cat /home/vagrant/.ssh/id_rsa.pub >> /home/vagrant/.ssh/authorized_keys' node$i
 done
 
+# Set up hosts file then copy it to each node
+cp hosts.template hosts
+for i in $(seq 1 $TOTAL_NODES); do
+  echo "192.168.56.20$i node$i.cluster.local node$i" >> hosts
+done
+for i in $(seq 1 $TOTAL_NODES); do
+  vagrant ssh -c "sudo cp /vagrant/hosts /etc/hosts" node$i
+done
+
 # Do an intial ssh to each node (including node1) from node1 
 for i in $(seq 1 $TOTAL_NODES); do
   vagrant ssh -c "echo uptime|ssh -o StrictHostKeyChecking=no ${PUB_NET}.20${i}" node1
@@ -117,6 +126,7 @@ vagrant ssh -c 'git clone https://github.com/kubernetes-sigs/kubespray.git /home
 
 
 # Python requirements
+vagrant ssh -c 'sudo apt update -y'  node1
 vagrant ssh -c 'sudo DEBIAN_FRONTEND=noninteractive apt-get -y install python3.10-venv' node1
 vagrant ssh -c 'python3 -m venv /home/vagrant/.py3kubespray'  node1
 vagrant ssh -c '. /home/vagrant/.py3kubespray/bin/activate && pip install -r /home/vagrant/kubespray/requirements.txt'  node1
