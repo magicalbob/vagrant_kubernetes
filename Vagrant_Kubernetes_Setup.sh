@@ -126,6 +126,7 @@ vagrant ssh -c 'cp -rfp /home/vagrant/kubespray/inventory/sample /home/vagrant/k
 vagrant ssh -c "sed -i -E '/^kube_version:/s/.*/kube_version: $KUBE_VERSION/'  /home/vagrant/kubespray/inventory/vagrant_kubernetes/group_vars/k8s_cluster/k8s-cluster.yml" node1
 vagrant ssh -c 'declare -a IPS=(); for ((i=1; i<=TOTAL_NODES; i++)); do IPS+=("${PUB_NET}.20$i"); done && . /home/vagrant/.py3kubespray/bin/activate && CONFIG_FILE=/home/vagrant/kubespray/inventory/vagrant_kubernetes/hosts.yaml python3 /home/vagrant/kubespray/contrib/inventory_builder/inventory.py "${IPS[@]}"' node1
 vagrant ssh -c 'cp /vagrant/hosts.yaml /home/vagrant/kubespray/inventory/vagrant_kubernetes/hosts.yaml' node1
+vagrant ssh -c 'export PUB_NET=192.168.56; export TOTAL_NODES=7; declare -a IPS=(); for ((i=1; i<=TOTAL_NODES; i++)); do IPS+=("${PUB_NET}.20$i"); done; echo "${IPS[@]}" && . /home/vagrant/.py3kubespray/bin/activate && CONFIG_FILE=/home/vagrant/kubespray/inventory/vagrant_kubernetes/hosts.yaml python3 /home/vagrant/kubespray/contrib/inventory_builder/inventory.py ${IPS[@]}' node1
 vagrant ssh -c 'cp /vagrant/addons.yml /home/vagrant/kubespray/inventory/vagrant_kubernetes/group_vars/k8s_cluster/addons.yml' node1
 
 # Uncomment upstream dns servers in all.yaml
