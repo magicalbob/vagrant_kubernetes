@@ -90,7 +90,7 @@ echo Write the hosts.yaml content to the file
 echo "$HOSTS_YAML" > hosts.yaml
 
 echo Set up ssh between the nodes
-echo First copy the insecure_private_key to node1 (which is the only node that needs it)
+# First copy the insecure_private_key to node1 (which is the only node that needs it)
 vagrant upload ~/.vagrant.d/insecure_private_key /home/vagrant/.ssh/id_rsa node1
 
 echo Now create the public key from it
@@ -106,7 +106,7 @@ for i in $(seq 1 $TOTAL_NODES); do
   vagrant ssh -c 'cat /home/vagrant/.ssh/id_rsa.pub >> /home/vagrant/.ssh/authorized_keys' node$i
 done
 
-echo Do an intial ssh to each node (including node1) from node1 
+echo Do an intial ssh to each node from node1 
 for i in $(seq 1 $TOTAL_NODES); do
   vagrant ssh -c "echo uptime|ssh -o StrictHostKeyChecking=no ${PUB_NET}.20${i}" node1
 done
