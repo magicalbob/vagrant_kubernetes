@@ -90,7 +90,6 @@ echo Write the hosts.yaml content to the file
 echo "$HOSTS_YAML" > hosts.yaml
 
 echo Set up ssh between the nodes
-# First copy the insecure_private_key to node1 (which is the only node that needs it)
 vagrant upload ~/.vagrant.d/insecure_private_key /home/vagrant/.ssh/id_rsa node1
 
 echo Now create the public key from it
@@ -122,7 +121,7 @@ vagrant ssh -c 'python3 -m venv /home/vagrant/.py3kubespray'  node1
 vagrant ssh -c '. /home/vagrant/.py3kubespray/bin/activate && pip install -r /home/vagrant/kubespray/requirements.txt'  node1
 
 echo Write /etc/hosts file
-echo Do an intial ssh to each node (including node1) from node1
+echo Do an intial ssh to each node from node1
 cp hosts.template hosts
 for i in $(seq 1 $TOTAL_NODES); do
   echo 192.168.56.20${i} node${i} >> hosts
