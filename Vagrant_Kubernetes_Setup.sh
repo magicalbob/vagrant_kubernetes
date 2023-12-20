@@ -121,6 +121,17 @@ vagrant ssh -c 'sudo DEBIAN_FRONTEND=noninteractive apt-get -y install python3.1
 vagrant ssh -c 'python3 -m venv /home/vagrant/.py3kubespray'  node1
 vagrant ssh -c '. /home/vagrant/.py3kubespray/bin/activate && pip install -r /home/vagrant/kubespray/requirements.txt'  node1
 
+# Write /etc/hosts file
+# Do an intial ssh to each node (including node1) from node1
+cp hosts.template hosts
+for i in $(seq 1 $TOTAL_NODES); do
+  echo 192.168.56.20${i} node${i} >> hosts
+done
+# Copy hosts file to each node
+for i in $(seq 1 $TOTAL_NODES); do
+  vagrant ssh -c "sudo cp /vagrant/hosts /etc/hosts" node1
+done
+
 # Set up the cluster
 vagrant ssh -c 'cp -rfp /home/vagrant/kubespray/inventory/sample /home/vagrant/kubespray/inventory/vagrant_kubernetes' node1
 vagrant ssh -c "sed -i -E '/^kube_version:/s/.*/kube_version: $KUBE_VERSION/'  /home/vagrant/kubespray/inventory/vagrant_kubernetes/group_vars/k8s_cluster/k8s-cluster.yml" node1
