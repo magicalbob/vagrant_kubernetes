@@ -5,3 +5,4 @@ hosts.yaml
 hosts
 vagrant_kubernetes.log
 projects
+build_inventory.sh

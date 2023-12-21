@@ -1,0 +1,9 @@
+export PUBLIC_NET=$PUB_NET
+declare -a IPS=()
+for ((i = 201; i <= 200 + $TOTAL_NODES; i++))
+do
+  IPS+=("PUBLIC_NET.i")
+done
+. /home/vagrant/.py3kubespray/bin/activate
+export CONFIG_FILE=/home/vagrant/kubespray/inventory/vagrant_kubernetes/hosts.yaml
+python3 /home/vagrant/kubespray/contrib/inventory_builder/inventory.py ${IPS[@]}

@@ -1,5 +1,22 @@
 #!/usr/bin/env bash
 
+if [[ "$1" == "SKIP_UP" ]]; then
+  export SKIP_UP=1
+else
+  export SKIP_UP=0
+fi
+
+if [[ "$1" == "UP_ONLY" ]]; then
+  export UP_ONLY=1
+else
+  export UP_ONLY=0
+fi
+
+if [ $# -eq 0 ]; then
+  echo "Specify SKIP_UP or UP_ONLY"
+  exit 1
+fi
+
 echo Work out primary network adapter for Mac or linux
 if [[ $(uname) == "Darwin" ]]; then
   # For macOS
@@ -23,17 +40,25 @@ export KUBE_VERSION=$(jq -r '.kube_version' config.json)
 echo Create Vagrantfile from template
 envsubst < Vagrantfile.template > Vagrantfile
 
-echo Bring up all the nodes without provisioning
-vagrant up --no-provision
+if [ "$SKIP_UP" -eq 1 ]
+then
+  echo Skipping upping and provisioning
+else
+  if [ "$UP_ONLY" -eq 1 ]
+  then
+    echo Bring up all the nodes without provisioning
+    vagrant up --no-provision
 
-echo Loop to check if all nodes are created and then provision
-while vagrant status | grep -q "not created (virtualbox)"; do
-  echo "Not all nodes are created yet. Retrying..."
-  vagrant up --no-provision
-done
+    echo Loop to check if all nodes are created and then provision
+    while vagrant status | grep -q "not created (virtualbox)"; do
+      echo "Not all nodes are created yet. Retrying..."
+      vagrant up --no-provision
+    done
 
-echo Provision all the nodes
-vagrant provision
+    echo Provision all the nodes
+    vagrant provision
+  fi
+fi
 
 echo Generate the hosts.yaml content
 HOSTS_YAML="all:
@@ -114,7 +139,6 @@ echo Clone the project to do the actual kubernetes cluster setup
 vagrant ssh -c 'rm -rf /home/vagrant/kubespray' node1
 vagrant ssh -c 'git clone https://github.com/kubernetes-sigs/kubespray.git /home/vagrant/kubespray' node1
 
-
 echo Python requirements
 vagrant ssh -c 'sudo DEBIAN_FRONTEND=noninteractive apt-get -y install python3.10-venv' node1
 vagrant ssh -c 'python3 -m venv /home/vagrant/.py3kubespray'  node1
@@ -135,7 +159,11 @@ echo Set up the cluster
 vagrant ssh -c 'cp -rfp /home/vagrant/kubespray/inventory/sample /home/vagrant/kubespray/inventory/vagrant_kubernetes' node1
 vagrant ssh -c "sed -i -E \"/^kube_version:/s/.*/kube_version: $KUBE_VERSION/\"  /home/vagrant/kubespray/inventory/vagrant_kubernetes/group_vars/k8s_cluster/k8s-cluster.yml" node1
 vagrant ssh -c 'cp /vagrant/hosts.yaml /home/vagrant/kubespray/inventory/vagrant_kubernetes/hosts.yaml' node1
-vagrant ssh -c "declare -a IPS=(); for ((i=1; i<=TOTAL_NODES; i++)); do IPS+=(\"${PUB_NET}.20$i\"); done; echo \"${IPS[@]}\" && . /home/vagrant/.py3kubespray/bin/activate && CONFIG_FILE=/home/vagrant/kubespray/inventory/vagrant_kubernetes/hosts.yaml python3 /home/vagrant/kubespray/contrib/inventory_builder/inventory.py ${IPS[@]}" node1
+envsubst < build_inventory.template | sed 's/PUBLIC_NET.i/$PUBLIC_NET.$i/' > build_inventory.sh
+chmod +x build_inventory.sh
+echo Execute build_inventory.sh
+vagrant ssh -c 'bash -c /vagrant/build_inventory.sh' node1
+
 vagrant ssh -c 'cp /vagrant/addons.yml /home/vagrant/kubespray/inventory/vagrant_kubernetes/group_vars/k8s_cluster/addons.yml' node1
 
 echo Uncomment upstream dns servers in all.yaml
