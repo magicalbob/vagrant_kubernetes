@@ -57,6 +57,9 @@ else
 
     echo Provision all the nodes
     vagrant provision
+
+    echo "Script `basename $0` has finished"
+    exit 0
   fi
 fi
 
@@ -187,5 +190,4 @@ vagrant ssh -c 'sudo chown vagrant:vagrant /home/vagrant/.kube/config' node1
 echo Install helm
 vagrant ssh -c 'sudo snap install helm --classic' node1
 
-echo Echo message to show script completion
 echo "Script `basename $0` has finished"
