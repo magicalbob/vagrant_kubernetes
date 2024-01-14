@@ -1,5 +1,21 @@
 #!/usr/bin/env bash
 
+# Initialize variables
+RECOVER=0
+RECOVERY_DIR=""
+
+# Check for the "RECOVER" command and the directory name as the second argument
+if [[ "$1" == "RECOVER" ]]; then
+  if [[ $# -eq 2 ]]; then
+    RECOVERY_DIR="./backup/$2"
+    RECOVER=1
+  else
+    echo "Usage: $0 RECOVER <directory_name>"
+    exit 1
+  fi
+fi
+
+# Check for other command line arguments
 if [[ "$1" == "SKIP_UP" ]]; then
   export SKIP_UP=1
 else
@@ -18,8 +34,9 @@ else
   export BACKUP=0
 fi
 
-if [[ $# -ne 1 ]] || [[ $SKIP_UP -eq 0 ]] && [[ $UP_ONLY -eq 0 ]] && [[ $BACKUP -eq 0 ]]; then
-	echo "Specify one (and only one) of: SKIP_UP, UP_ONLY or BACKUP"
+# Check if multiple command line arguments are used
+if [[ ($# -ne 1 && $RECOVER -eq 0) || ($RECOVER -eq 1 && ($SKIP_UP -eq 1 || $UP_ONLY -eq 1 || $BACKUP -eq 1)) ]]; then
+  echo "Usage: $0 [SKIP_UP | UP_ONLY | BACKUP | RECOVER <directory_name>]"
   exit 1
 fi
 
@@ -30,6 +47,18 @@ if [[ $BACKUP -eq 1 ]]; then
   BACKUP_DIR="backup/$(date +%s)"
   mkdir -p ${BACKUP_DIR}
   cp -aRp .vagrant/* ${BACKUP_DIR}
+  # resume the vagrant stack
+  vagrant resume
+  # exit
+  exit 0
+fi
+
+if [[ $RECOVER -eq 1 ]]; then
+  # suspend the vagrant stack (assuming it is running)
+  vagrant suspend
+  # replace .vagrant folder with backup/timestamp form RECOVER_DIR
+  rm -rf .vagrant/*
+  cp -aRp ${RECOVERY_DIR}/* .vagrant/
   # resume the vagrant stack
   vagrant resume
   # exit
