@@ -12,9 +12,28 @@ else
   export UP_ONLY=0
 fi
 
-if [ $# -eq 0 ]; then
-  echo "Specify SKIP_UP or UP_ONLY"
+if [[ "$1" == "BACKUP" ]]; then
+  export BACKUP=1
+else
+  export BACKUP=0
+fi
+
+if [[ $# -ne 1 ]] || [[ $SKIP_UP -eq 0 ]] && [[ $UP_ONLY -eq 0 ]] && [[ $BACKUP -eq 0 ]]; then
+	echo "Specify one (and only one) of: SKIP_UP, UP_ONLY or BACKUP"
   exit 1
+fi
+
+if [[ $BACKUP -eq 1 ]]; then
+  # suspend the vagrant stack (assuming it is running)
+  vagrant suspend
+  # copy the .vagrant folder to backup/timestamp
+  BACKUP_DIR="backup/$(date +%s)"
+  mkdir -p ${BACKUP_DIR}
+  cp -aRp .vagrant/* ${BACKUP_DIR}
+  # resume the vagrant stack
+  vagrant resume
+  # exit
+  exit 0
 fi
 
 echo Work out primary network adapter for Mac or linux
