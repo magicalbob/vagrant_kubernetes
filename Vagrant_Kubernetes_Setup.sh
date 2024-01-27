@@ -233,21 +233,41 @@ install_kubernetes() {
     vagrant ssh -c '. /home/vagrant/.py3kubespray/bin/activate && cd /home/vagrant/kubespray && ansible-playbook -i /home/vagrant/kubespray/inventory/vagrant_kubernetes/hosts.yaml --become --become-user=root /home/vagrant/kubespray/cluster.yml' node1
 }
 
-# Function to copy kubeconfig file and retry if it fails
+# Function to install Kubernetes with Kubespray
+install_kubernetes() {
+    echo "Do install of Kubernetes"
+    vagrant ssh -c '. /home/vagrant/.py3kubespray/bin/activate && cd /home/vagrant/kubespray && ansible-playbook -i /home/vagrant/kubespray/inventory/vagrant_kubernetes/hosts.yaml --become --become-user=root /home/vagrant/kubespray/cluster.yml' node1
+}
+
+# Function to copy kubeconfig file
 copy_kubeconfig() {
     echo "Now copy /root/.kube/config to vagrant user"
     vagrant ssh -c 'mkdir -p /home/vagrant/.kube' node1
-    until vagrant ssh -c 'sudo cp /root/.kube/config /home/vagrant/.kube/config' node1; do
-        echo "Copying kubeconfig failed. Retrying..."
-        sleep 5  # You can adjust the sleep duration as needed
-    done
+    vagrant ssh -c 'sudo cp /root/.kube/config /home/vagrant/.kube/config' node1
 }
 
-# Call the install_kubernetes function
-install_kubernetes
+# Retry mechanism
+max_attempts=3  # Maximum number of retry attempts
+attempt=1
 
-# Call the copy_kubeconfig function
-copy_kubeconfig
+while [ $attempt -le $max_attempts ]; do
+    install_kubernetes  # Attempt Kubernetes installation
+    copy_kubeconfig    # Attempt kubeconfig copy
+
+    # Check if kubeconfig copy was successful
+    if [ $? -eq 0 ]; then
+        echo "Kubeconfig copy successful."
+        break  # Break out of the loop if successful
+    else
+        echo "Kubeconfig copy attempt $attempt failed."
+        attempt=$((attempt+1))
+    fi
+done
+
+# Check if we reached the maximum number of attempts
+if [ $attempt -gt $max_attempts ]; then
+    echo "Maximum number of attempts reached. Installation and kubeconfig copy failed."
+fi
 
 vagrant ssh -c 'sudo chown vagrant:vagrant /home/vagrant/.kube/config' node1
 
