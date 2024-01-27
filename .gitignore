@@ -7,3 +7,5 @@ vagrant_kubernetes.log
 projects
 build_inventory.sh
 backup
+diagrams/venv
+diagrams/*.png
