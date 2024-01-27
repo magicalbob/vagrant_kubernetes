@@ -9,6 +9,6 @@ Script `Vagrant_Kubernetes_Setup.sh` co-odinates eveything. Script `run_vagrant_
 
 ![Lower Level Diagram](./diagrams/Lower_Level.png)
 
-The number of control plane nodes (default 1) and worker nodes (default 1) are defined in `config.json`, along with RAM size (default 2048) and cpu counts (default 2). Each node is the same size.
+The number of control plane nodes (default 1) and worker nodes (default 1) are defined in `config.json`, along with RAM size (default 2048) and cpu counts (default 2) of each node. Each node is the same size for simplicity. `config.json` also defines the version of kubernetes to install on each node.
 
 `Vagrant_Kubernetes_Setup.sh` makes use of `~/.vagrant.d/insecure_private_key` to allow `node1` to ssh freely to each of the nodes (including itself). 
