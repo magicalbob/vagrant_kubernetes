@@ -227,12 +227,28 @@ vagrant ssh -c '. /home/vagrant/.py3kubespray/bin/activate && ansible all -i /ho
 vagrant ssh -c '. /home/vagrant/.py3kubespray/bin/activate && ansible all -i /home/vagrant/kubespray/inventory/vagrant_kubernetes/hosts.yaml -m shell -a "echo net.ipv4.ip_forward=1 | sudo tee -a /etc/sysctl.conf"' node1
 vagrant ssh -c '. /home/vagrant/.py3kubespray/bin/activate && ansible all -i /home/vagrant/kubespray/inventory/vagrant_kubernetes/hosts.yaml -m shell -a "sudo sed -i \"/ swap / s/^\(.*\)$/#\1/g\" /etc/fstab && sudo swapoff -a"' node1
 
-echo Do install of kubernetes
-vagrant ssh -c '. /home/vagrant/.py3kubespray/bin/activate && cd /home/vagrant/kubespray && ansible-playbook -i /home/vagrant/kubespray/inventory/vagrant_kubernetes/hosts.yaml --become --become-user=root /home/vagrant/kubespray/cluster.yml' node1
+# Function to install Kubernetes with Kubespray
+install_kubernetes() {
+    echo "Do install of Kubernetes"
+    vagrant ssh -c '. /home/vagrant/.py3kubespray/bin/activate && cd /home/vagrant/kubespray && ansible-playbook -i /home/vagrant/kubespray/inventory/vagrant_kubernetes/hosts.yaml --become --become-user=root /home/vagrant/kubespray/cluster.yml' node1
+}
 
-echo Now copy /root/.kube/config to vagrant user
-vagrant ssh -c 'mkdir -p /home/vagrant/.kube' node1
-vagrant ssh -c 'sudo cp /root/.kube/config /home/vagrant/.kube/config' node1
+# Function to copy kubeconfig file and retry if it fails
+copy_kubeconfig() {
+    echo "Now copy /root/.kube/config to vagrant user"
+    vagrant ssh -c 'mkdir -p /home/vagrant/.kube' node1
+    until vagrant ssh -c 'sudo cp /root/.kube/config /home/vagrant/.kube/config' node1; do
+        echo "Copying kubeconfig failed. Retrying..."
+        sleep 5  # You can adjust the sleep duration as needed
+    done
+}
+
+# Call the install_kubernetes function
+install_kubernetes
+
+# Call the copy_kubeconfig function
+copy_kubeconfig
+
 vagrant ssh -c 'sudo chown vagrant:vagrant /home/vagrant/.kube/config' node1
 
 echo Install helm
