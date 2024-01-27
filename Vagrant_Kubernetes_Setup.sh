@@ -274,4 +274,7 @@ vagrant ssh -c 'sudo chown vagrant:vagrant /home/vagrant/.kube/config' node1
 echo Install helm
 vagrant ssh -c 'sudo snap install helm --classic' node1
 
+echo Install Metrics Server
+vagrant ssh -c 'kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml' node1
+
 echo "Script `basename $0` has finished"
