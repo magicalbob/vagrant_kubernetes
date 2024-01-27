@@ -199,11 +199,11 @@ echo Write /etc/hosts file
 echo Do an intial ssh to each node from node1
 cp hosts.template hosts
 for i in $(seq 1 $TOTAL_NODES); do
-  echo 192.168.56.20${i} node${i} >> hosts
+  echo ${PUB_NET}.20${i} node${i} >> hosts
 done
 echo Copy hosts file to each node
 for i in $(seq 1 $TOTAL_NODES); do
-  vagrant ssh -c "sudo cp /vagrant/hosts /etc/hosts" node1
+  vagrant ssh -c "sudo cp /vagrant/hosts /etc/hosts" node${i}
 done
 
 echo Set up the cluster
