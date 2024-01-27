@@ -1,8 +1,8 @@
 {
-  "kube_version": "v1.26.2",
-  "control_nodes": 3,
-  "worker_nodes": 4,
-  "ram_size": 16384,
+  "kube_version": "v1.28.6",
+  "control_nodes": 1,
+  "worker_nodes": 1,
+  "ram_size": 2048,
   "cpu_count" : 6,
   "pub_net": "192.168.56"
 }
