@@ -8,4 +8,3 @@ projects
 build_inventory.sh
 backup
 diagrams/venv
-diagrams/*.png
