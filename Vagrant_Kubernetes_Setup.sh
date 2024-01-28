@@ -233,12 +233,6 @@ install_kubernetes() {
     vagrant ssh -c '. /home/vagrant/.py3kubespray/bin/activate && cd /home/vagrant/kubespray && ansible-playbook -i /home/vagrant/kubespray/inventory/vagrant_kubernetes/hosts.yaml --become --become-user=root /home/vagrant/kubespray/cluster.yml' node1
 }
 
-# Function to install Kubernetes with Kubespray
-install_kubernetes() {
-    echo "Do install of Kubernetes"
-    vagrant ssh -c '. /home/vagrant/.py3kubespray/bin/activate && cd /home/vagrant/kubespray && ansible-playbook -i /home/vagrant/kubespray/inventory/vagrant_kubernetes/hosts.yaml --become --become-user=root /home/vagrant/kubespray/cluster.yml' node1
-}
-
 # Function to copy kubeconfig file
 copy_kubeconfig() {
     echo "Now copy /root/.kube/config to vagrant user"
@@ -247,7 +241,7 @@ copy_kubeconfig() {
 }
 
 # Retry mechanism
-max_attempts=3  # Maximum number of retry attempts
+max_attempts=5  # Maximum number of retry attempts
 attempt=1
 
 while [ $attempt -le $max_attempts ]; do
