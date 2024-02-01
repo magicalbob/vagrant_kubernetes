@@ -84,6 +84,7 @@ export RAM_SIZE=$(jq -r '.ram_size' config.json)
 export CPU_COUNT=$(jq -r '.cpu_count' config.json)
 export PUB_NET=$(jq -r '.pub_net' config.json)
 export KUBE_VERSION=$(jq -r '.kube_version' config.json)
+export KUBESPRAY_VERSION=$(jq -r '.kubespray_version' config.json)
 
 echo Create Vagrantfile from template
 envsubst < Vagrantfile.template > Vagrantfile
@@ -189,6 +190,7 @@ done
 echo Clone the project to do the actual kubernetes cluster setup
 vagrant ssh -c 'rm -rf /home/vagrant/kubespray' node1
 vagrant ssh -c 'git clone https://github.com/kubernetes-sigs/kubespray.git /home/vagrant/kubespray' node1
+vagrant ssh -c "cd kubespray && git checkout ${KUBESPRAY_VERSION}" node1
 
 echo Python requirements
 vagrant ssh -c 'sudo DEBIAN_FRONTEND=noninteractive apt-get -y install python3.10-venv' node1
