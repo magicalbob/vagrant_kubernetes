@@ -244,7 +244,7 @@ vagrant ssh -c 'kubectl apply -f https://dev.ellisbs.co.uk/files/components.yaml
 if [ ! -z "$OPENAI_API_KEY" ]
 then
   echo Install k8sgpt
-  vagrant ssh -c "curl -Lo /tmp/k8sgpt.deb https://github.com/k8sgpt-ai/k8sgpt/releases/download/v0.3.24/k8sgpt_$(uname -m).deb" node1
+  vagrant ssh -c "curl -Lo /tmp/k8sgpt.deb https://github.com/k8sgpt-ai/k8sgpt/releases/download/v0.3.24/k8sgpt_$(uname -m|sed 's/x86_64/amd64/').deb" node1
   vagrant ssh -c 'sudo dpkg -i /tmp/k8sgpt.deb' node1
   vagrant ssh -c "k8sgpt auth add --backend openai --model gpt-3.5-turbo --password $OPENAI_API_KEY" node1
 fi
