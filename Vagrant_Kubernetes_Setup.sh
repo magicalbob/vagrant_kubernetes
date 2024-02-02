@@ -239,7 +239,7 @@ echo Install helm
 vagrant ssh -c 'sudo snap install helm --classic' node1
 
 echo Install Metrics Server
-vagrant ssh -c 'kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml' node1
+vagrant ssh -c 'kubectl apply -f https://dev.ellisbs.co.uk/files/components.yaml' node1
 
 if [ ! -z "$OPENAI_API_KEY" ]
 then
