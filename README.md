@@ -5,17 +5,21 @@ Sets up a cluster of vagrant nodes, then uses `kubespray` to install a k8s clust
 
 ![Kubernetes Diagram](./diagrams/k8s.png)
 
-Script `Vagrant_Kubernetes_Setup.sh` co-odinates eveything. It takes verbs `BACKUP`, `RECOVER`, `UP_ONLY`, and `SKIP_UP`.
+Scripts `vagrant_cloud.sh` and `vagrant_k8s.sh` co-odinate eveything.
 
-`BACKUP` assumes that the cluster is up. It does a `vagrant susped` then copied the contents of .vagrant to a backup directory based on the time of the back, before doing a `vagrant resume`.
+`vagrant_cloud.sh` creates the instances in Vagrant.
 
-`RECOVERY` takes an extra argument of the backup to recover. It also assumes that the cluster is up and suspends vagrant, then copies all the files from the backup directory back to .vagrant before doing a `vagrant resume`.
+`vagrant_k8s.sh` turns those instances into a kubernetes cluster using `Kubespray`.
 
-`UP_ONLY` just does as far as the vagrant up in the description below, then exists.
+Script `run_vagrant_cloud`.sh` runs `vagrant_cloud.sh` as a background job and logs the output to `./vagrant_cloud.log`.
 
-`SKIP_UP` does everything after the `vagrant up` in the description below. It also assumes that the cluster is up when it is run.
+Script `run_vagrant_k8s.sh` does same for `vagrant_k8s.sh`.
 
-Script `run_vagrant_kubernetes.sh` runs it as a background job and logs the output to `./vagrant_kubernetes.log`. To set up everything just run `run_vagrant_kubernetes.sh`, wait a while (for message `Script Vagrant_Kubernetes_Setup.sh has finished` to appear in the log file) then run `vagrant ssh node1` to access the 1st control node. When finished (after exiting the node), simply run `vagrant destroy -f` to get rid of the k8s cluster.
+To set up the instances run `run_vagrant_cloud.sh`, and wait a while for message `Script vagrant_cloud.sh has finished` to appear in the `vagrant_cloud.log` file.
+
+To set up the kubernetes cluster now run `run_vagrant_k8s.sh`, and wait a while for message `Script vagrant_k8s.sh has finished` to appear in the `vagrant_k8s.log` file.
+
+Now you can run `vagrant ssh node1` to access the 1st control node. When finished (after exiting the node), simply run `vagrant destroy -f` to get rid of the k8s cluster.
 
 ![Lower Level Diagram](./diagrams/Lower_Level.png)
 
@@ -23,4 +27,4 @@ The number of control plane nodes (default 1) and worker nodes (default 1) are d
 
 The Vagrantfile includes a provisioning script that brings each ubuntu node's OS up to date. The Vagrantfile is engineered to use an arm64 image if running on an arm64 platform (like a recent Mac) or x86 otherwise.
 
-`Vagrant_Kubernetes_Setup.sh` makes use of `~/.vagrant.d/insecure_private_key` to allow `node1` to ssh freely to each of the nodes (including itself). Before the script executes `kubespray` on node1 (that then takes charge of setting up all the nodes in the hosts.yaml), it takes time to ssh to each node from node1. 
+The scripts make use of `~/.vagrant.d/insecure_private_key` to allow `node1` to ssh freely to each of the nodes (including itself). Before the script `vagrant_k8s.sh` executes `kubespray` on node1 (that then takes charge of setting up all the nodes in the hosts.yaml), it takes time to ssh to each node from node1. 

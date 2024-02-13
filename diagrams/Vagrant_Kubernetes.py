@@ -16,11 +16,13 @@ with Diagram("Vagrant Host", show=False, filename=CHART_NAME):
     with Cluster("Vagrant Kubernetes Setup"):
         config_json = Storage("config.json")
         vagrant_template = Storage("Vagrantfile.template")
-        vagrant_script = Bash("Vagrant_Kubernetes_Setup.sh")
+        vagrant_script1 = Bash("vagrant_cloud.sh")
         vagrant_file = Storage("Vagrantfile")
+        vagrant_script2 = Bash("vagrant_k8s.sh")
 
-    config_json  >> vagrant_script
-    vagrant_template >> vagrant_script
-    vagrant_script >> vagrant_file
+    config_json  >> vagrant_script1
+    vagrant_template >> vagrant_script1
+    vagrant_script1 >> vagrant_file
+    vagrant_file >> vagrant_script2
 
 Image(filename=f"{CHART_NAME}.png")
