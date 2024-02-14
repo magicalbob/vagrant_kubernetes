@@ -27,7 +27,7 @@ Vagrant.configure("2") do |config|
         sudo apt-get upgrade -y
 	sudo apt-get install -y net-tools python3.10-venv
         export NODE_IP=$(ip a show eth1|grep 'inet '|cut -dt -f2|cut -d' ' -f2|cut -d/ -f1)
-        export NODE_ID=$(cat /etc/machine-id)
+        export NODE_ID=node$(cat /etc/machine-id)
         python3 -m venv ~/.py3redis
         . ~/.py3redis/bin/activate
         pip install --upgrade pip setuptools redis
