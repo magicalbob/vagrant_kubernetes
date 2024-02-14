@@ -25,7 +25,19 @@ Vagrant.configure("2") do |config|
       node.vm.provision "shell", inline: <<-SHELL
         sudo apt-get update
         sudo apt-get upgrade -y
-	sudo apt-get install -y net-tools
+	sudo apt-get install -y net-tools python3.10-venv
+        export NODE_IP=$(ip a show eth1|grep 'inet '|cut -dt -f2|cut -d' ' -f2|cut -d/ -f1)
+        export NODE_ID=$(cat /etc/machine-id)
+        python3 -m venv ~/.py3redis
+        . ~/.py3redis/bin/activate
+        pip install --upgrade pip setuptools redis
+        python3 <<EOF
+import redis, os
+r = redis.Redis(host='$REDIS_IP', port=6379, password='$REDIS_PASSWORD', decode_responses=True)
+r.hset('cluster', os.environ.get('NODE_ID'),os.environ.get('NODE_IP'))
+EOF
+        echo "$SSH_PUBLIC_CONTENT" > ~vagrant/.ssh/authorized_keys
+        sudo passwd -d vagrant
       SHELL
     end
   end
