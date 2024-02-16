@@ -13,20 +13,6 @@ then
   exit 1
 fi
 
-if [ -z "$SSH_PUBLIC" ]
-then
-  echo "Environment variable SSH_PUBLIC has to be provided"
-  exit 1
-fi
-
-if [ ! -f "$SSH_PUBLIC" ]
-then
-  echo "Public key given does not exist"
-  exit 1
-fi
-
-export SSH_PUBLIC_CONTENT=$(cat $SSH_PUBLIC)
-
 # Read configuration from config.json
 CONTROL_NODES=$(jq -r '.control_nodes' config.json)
 WORKER_NODES=$(jq -r '.worker_nodes' config.json)

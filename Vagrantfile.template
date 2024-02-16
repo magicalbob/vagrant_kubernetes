@@ -36,7 +36,6 @@ import redis, os
 r = redis.Redis(host='$REDIS_IP', port=6379, password='$REDIS_PASSWORD', decode_responses=True)
 r.hset('cluster', os.environ.get('NODE_ID'),os.environ.get('NODE_IP'))
 EOF
-        echo "$SSH_PUBLIC_CONTENT" > ~vagrant/.ssh/authorized_keys
         sudo passwd -d vagrant
       SHELL
     end
