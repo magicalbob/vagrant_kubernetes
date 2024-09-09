@@ -238,6 +238,11 @@ vagrant ssh -c 'sudo chown vagrant:vagrant /home/vagrant/.kube/config' node1
 echo Install helm
 vagrant ssh -c 'sudo snap install helm --classic' node1
 
+echo Install coredns
+# Install coredns
+vagrant ssh -c 'helm repo add coredns https://coredns.github.io/helm' node1
+vagrant ssh -c 'helm --namespace=kube-system install coredns coredns/coredns' node1
+
 echo Install Metrics Server
 vagrant ssh -c 'kubectl apply -f https://dev.ellisbs.co.uk/files/components.yaml' node1
 
