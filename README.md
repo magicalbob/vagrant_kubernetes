@@ -1,7 +1,7 @@
-#Vagrant Kubernetes
+# Vagrant Kubernetes
 This project sets up a cluster of Vagrant nodes and uses Kubespray to install a Kubernetes (K8s) cluster on them.
 
-##Overview
+## Overview
 The main script Vagrant_Kubernetes_Setup.sh orchestrates the entire setup process. It accepts the following commands:
 
 - **BACKUP**: Creates a backup of the current cluster state.
@@ -9,26 +9,26 @@ The main script Vagrant_Kubernetes_Setup.sh orchestrates the entire setup proces
 - **UP_ONLY**: Brings up the Vagrant nodes without provisioning.
 - **SKIP_UP**: Skips bringing up the Vagrant nodes and proceeds directly to provisioning (assumes nodes are already up).
 
-###Commands
-####BACKUP
+### Commands
+#### BACKUP
 Assumes the cluster is running.
 Suspends the Vagrant stack using vagrant suspend.
 Copies the contents of the .vagrant directory to a backup directory named with a timestamp.
 Resumes the Vagrant stack with vagrant resume.
-####RECOVER
+#### RECOVER
 Requires an additional argument: the backup directory name.
 Assumes the cluster is running.
 Suspends the Vagrant stack.
 Replaces the .vagrant directory with the contents from the specified backup.
 Resumes the Vagrant stack.
-####UP_ONLY
+#### UP_ONLY
 Brings up all the nodes without running the provisioning steps.
 Useful for setting up the Vagrant environment separately.
-####SKIP_UP
+#### SKIP_UP
 Skips the vagrant up process.
 Proceeds with provisioning and configuration.
 Assumes the Vagrant nodes are already running.
-###Usage
+### Usage
 To set up everything, run the run_vagrant_kubernetes.sh script. This script runs in the background and logs output to ./vagrant_kubernetes.log.
 
 ```
@@ -48,7 +48,7 @@ When finished, destroy the Kubernetes cluster with:
 vagrant destroy -f
 ```
 
-###Configuration
+### Configuration
 The cluster settings are defined in config.json. This file specifies:
 
 - **kube_version**: The version of Kubernetes to install.
@@ -71,20 +71,20 @@ Example config.json
 	  "pub_net": "192.168.56"
 	}
 ```
-###Details
+### Details
 The Vagrantfile includes a provisioning script that updates each Ubuntu node.
 It automatically selects an arm64 image if running on an arm64 platform (e.g., Apple Silicon Macs), or an x86 image otherwise.
 The Vagrant_Kubernetes_Setup.sh script uses the Vagrant insecure private key (~/.vagrant.d/insecure_private_key) to allow node1 to SSH into all nodes, including itself.
 Before executing Kubespray on node1, the script ensures SSH access is set up from node1 to all other nodes.
-###Backup and Recovery
-####Backup
+### Backup and Recovery
+#### Backup
 To create a backup of the current cluster state:
 
 ```
     ./Vagrant_Kubernetes_Setup.sh BACKUP
 ```
 
-####Recovery
+#### Recovery
 To recover the cluster from a backup:
 
 ```
@@ -93,22 +93,22 @@ To recover the cluster from a backup:
 
 Replace <backup_directory_name> with the name of the backup directory you wish to recover from.
 
-####Advanced Usage
-#####Bring Up Nodes Without Provisioning
+#### Advanced Usage
+##### Bring Up Nodes Without Provisioning
 If you want to bring up the Vagrant nodes without running the provisioning steps:
 
 ```
     ./Vagrant_Kubernetes_Setup.sh UP_ONLY
 ```
 
-#####Skip Bringing Up Nodes
+##### Skip Bringing Up Nodes
 If the Vagrant nodes are already running and you want to proceed with provisioning:
 
 ```
 ./Vagrant_Kubernetes_Setup.sh SKIP_UP
 ```
 
-###Notes
+### Notes
 Ensure you have Vagrant and VirtualBox installed.
 
 The script may need execution permissions:
@@ -121,11 +121,11 @@ The setup process can take some time depending on your system's performance and 
 
 ![Kubernetes Diagram](./diagrams/k8s.png)
 
-###Troubleshooting
+### Troubleshooting
 - **SSH Issues**: If node1 cannot SSH into other nodes, ensure that the insecure private key is correctly uploaded and that SSH keys are properly configured.
 - **Vagrant Errors**: If you encounter issues during vagrant up, try running vagrant reload or check the Vagrant logs for more details.
 - **Kubespray Errors**: Consult the Kubespray documentation and logs if the Kubernetes cluster fails to deploy.
 
-###Acknowledgments
+### Acknowledgments
 This project utilizes Kubespray for deploying Kubernetes.
 Vagrant boxes are based on Ubuntu images.
