@@ -21,6 +21,20 @@ Script `run_vagrant_kubernetes.sh` runs it as a background job and logs the outp
 
 The number of control plane nodes (default 1) and worker nodes (default 1) are defined in `config.json`, along with RAM size (default 2048) and cpu counts (default 2) of each node. Each node is the same size for simplicity. `config.json` also defines the version of kubernetes to install on each node.
 
+Here is an example `config.json` file:
+
+```
+	{
+	  "kube_version": "v1.30.2",
+	  "kubespray_version": "1ebd860c13d95e7f19dd12f1fd9fa316cb0f9740",
+	  "control_nodes": 1,
+	  "worker_nodes": 1,
+	  "ram_size": 2048,
+	  "cpu_count" : 2,
+	  "pub_net": "192.168.0"
+	}
+```
+
 The Vagrantfile includes a provisioning script that brings each ubuntu node's OS up to date. The Vagrantfile is engineered to use an arm64 image if running on an arm64 platform (like a recent Mac) or x86 otherwise.
 
 `Vagrant_Kubernetes_Setup.sh` makes use of `~/.vagrant.d/insecure_private_key` to allow `node1` to ssh freely to each of the nodes (including itself). Before the script executes `kubespray` on node1 (that then takes charge of setting up all the nodes in the hosts.yaml), it takes time to ssh to each node from node1. 
