@@ -32,14 +32,14 @@ Assumes the Vagrant nodes are already running.
 To set up everything, run the run_vagrant_kubernetes.sh script. This script runs in the background and logs output to ./vagrant_kubernetes.log.
 
 ```
-    ./run_vagrant_kubernetes.sh
+./run_vagrant_kubernetes.sh
 ```
 Wait until you see the message Script Vagrant_Kubernetes_Setup.sh has finished in the log file.
 
 Access the first control node using:
 
 ```
-    vagrant ssh node1
+vagrant ssh node1
 ```
 
 When finished, destroy the Kubernetes cluster with:
@@ -61,15 +61,15 @@ The cluster settings are defined in config.json. This file specifies:
 
 Example config.json
 ```
-	{
-	  "kube_version": "v1.30.2",
-	  "kubespray_version": "1ebd860c13d95e7f19dd12f1fd9fa316cb0f9740",
-	  "control_nodes": 1,
-	  "worker_nodes": 1,
-	  "ram_size": 2048,
-	  "cpu_count": 2,
-	  "pub_net": "192.168.56"
-	}
+{
+  "kube_version": "v1.30.2",
+  "kubespray_version": "1ebd860c13d95e7f19dd12f1fd9fa316cb0f9740",
+  "control_nodes": 1,
+  "worker_nodes": 1,
+  "ram_size": 2048,
+  "cpu_count": 2,
+  "pub_net": "192.168.56"
+}
 ```
 ### Details
 The Vagrantfile includes a provisioning script that updates each Ubuntu node.
@@ -81,14 +81,14 @@ Before executing Kubespray on node1, the script ensures SSH access is set up fro
 To create a backup of the current cluster state:
 
 ```
-    ./Vagrant_Kubernetes_Setup.sh BACKUP
+./Vagrant_Kubernetes_Setup.sh BACKUP
 ```
 
 #### Recovery
 To recover the cluster from a backup:
 
 ```
-    ./Vagrant_Kubernetes_Setup.sh RECOVER <backup_directory_name>
+./Vagrant_Kubernetes_Setup.sh RECOVER <backup_directory_name>
 ```
 
 Replace <backup_directory_name> with the name of the backup directory you wish to recover from.
@@ -98,7 +98,7 @@ Replace <backup_directory_name> with the name of the backup directory you wish t
 If you want to bring up the Vagrant nodes without running the provisioning steps:
 
 ```
-    ./Vagrant_Kubernetes_Setup.sh UP_ONLY
+./Vagrant_Kubernetes_Setup.sh UP_ONLY
 ```
 
 ##### Skip Bringing Up Nodes
