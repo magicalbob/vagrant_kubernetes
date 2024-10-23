@@ -1,20 +1,5 @@
 #!/usr/bin/env bash
 
-# Initialize variables
-RECOVER=0
-RECOVERY_DIR=""
-
-# Check for the "RECOVER" command and the directory name as the second argument
-if [[ "$1" == "RECOVER" ]]; then
-  if [[ $# -eq 2 ]]; then
-    RECOVERY_DIR="./backup/$2"
-    RECOVER=1
-  else
-    echo "Usage: $0 RECOVER <directory_name>"
-    exit 1
-  fi
-fi
-
 # Check for other command line arguments
 if [[ "$1" == "SKIP_UP" ]]; then
   export SKIP_UP=1
@@ -28,41 +13,10 @@ else
   export UP_ONLY=0
 fi
 
-if [[ "$1" == "BACKUP" ]]; then
-  export BACKUP=1
+if [[ "$1" == "PROVISION" ]]; then
+  export PROVISION=1
 else
-  export BACKUP=0
-fi
-
-# Check if multiple command line arguments are used
-if [[ ($# -ne 1 && $RECOVER -eq 0) || ($RECOVER -eq 1 && ($SKIP_UP -eq 1 || $UP_ONLY -eq 1 || $BACKUP -eq 1)) ]]; then
-  echo "Usage: $0 [SKIP_UP | UP_ONLY | BACKUP | RECOVER <directory_name>]"
-  exit 1
-fi
-
-if [[ $BACKUP -eq 1 ]]; then
-  # suspend the vagrant stack (assuming it is running)
-  vagrant suspend
-  # copy the .vagrant folder to backup/timestamp
-  BACKUP_DIR="backup/$(date +%s)"
-  mkdir -p ${BACKUP_DIR}
-  cp -aRp .vagrant/* ${BACKUP_DIR}
-  # resume the vagrant stack
-  vagrant resume
-  # exit
-  exit 0
-fi
-
-if [[ $RECOVER -eq 1 ]]; then
-  # suspend the vagrant stack (assuming it is running)
-  vagrant suspend
-  # replace .vagrant folder with backup/timestamp form RECOVER_DIR
-  rm -rf .vagrant/*
-  cp -aRp ${RECOVERY_DIR}/* .vagrant/
-  # resume the vagrant stack
-  vagrant resume
-  # exit
-  exit 0
+  export PROVISION=0
 fi
 
 echo Work out primary network adapter for Mac or linux
@@ -104,8 +58,26 @@ else
       vagrant up --no-provision
     done
 
-    echo Provision all the nodes
-    vagrant provision
+    echo "Script `basename $0` has finished"
+    exit 0
+  fi
+
+  if [ "$PROVISION" -eq 1 ]
+  then
+    echo Update all the nodes 
+    for i in $(seq 1 $TOTAL_NODES); do
+        vagrant ssh -c 'export DEBIAN_FRONTEND=noninteractive && sudo apt-get update -y' node$i
+    done
+
+    echo Upgrade all the nodes 
+    for i in $(seq 1 $TOTAL_NODES); do
+        vagrant ssh -c 'export DEBIAN_FRONTEND=noninteractive && sudo apt-get upgrade -y' node$i
+    done
+
+    echo Install net-tools on all the nodes 
+    for i in $(seq 1 $TOTAL_NODES); do
+        vagrant ssh -c 'export DEBIAN_FRONTEND=noninteractive && sudo apt-get install -y net-tools' node$i
+    done
 
     echo "Script `basename $0` has finished"
     exit 0
