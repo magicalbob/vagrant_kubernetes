@@ -14,3 +14,4 @@ run_job:
     - sudo wget https://releases.hashicorp.com/vagrant/2.2.19/vagrant_2.2.19_x86_64.deb
     - sudo dpkg -i vagrant_2.2.19_x86_64.deb
     - ./Vagrant_Kubernetes_Setup.sh UP_ONLY
+    - cat Vagrantfile
