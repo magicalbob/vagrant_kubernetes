@@ -17,4 +17,4 @@ run_job:
     - ./Vagrant_Kubernetes_Setup.sh UP_ONLY
     - cat Vagrantfile
     - ./Vagrant_Kubernetes_Setup.sh SKIP_UP
-    - yq hosts.yaml
+    - cat hosts.yaml | yq .
