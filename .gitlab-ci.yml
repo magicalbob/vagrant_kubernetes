@@ -15,4 +15,5 @@ run_job:
     - sudo dpkg -i vagrant_2.2.19_x86_64.deb
     - ./Vagrant_Kubernetes_Setup.sh UP_ONLY
     - cat Vagrantfile
+    - ./Vagrant_Kubernetes_Setup.sh SKIP_UP
     - cat hosts.yaml
