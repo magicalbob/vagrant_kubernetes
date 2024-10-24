@@ -5,7 +5,7 @@ sudo rm -rf /var/lib/dpkg/lock-frontend /var/lib/dpkg/lock /var/cache/debconf/*.
 sudo dpkg --configure -a
 sudo apt-get install -f
 sudo apt-get install -y python3-dev python3-pip iproute2 jq gettext virtualbox yq ruby-full
-mv vagrant /usr/bin/ 2>/dev/null
+sudo mv vagrant /usr/bin/ 2>/dev/null
 ./Vagrant_Kubernetes_Setup.sh UP_ONLY
 cat Vagrantfile
 echo "Checking Ruby syntax..."
