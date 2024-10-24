@@ -7,4 +7,4 @@ run_job:
     - linux
   script:
     - ./pipeline.sh
-    - echo uptime|ssh ian@192.168.0.16
+    - ssh -o StrictHostKeyChecking=no -T ian@192.168.0.16 'uptime'
