@@ -13,3 +13,4 @@ ruby -c Vagrantfile || { echo "Ruby syntax error."; exit 1; }
 ./Vagrant_Kubernetes_Setup.sh SKIP_UP
 cat hosts.yaml | yq eval
 which vagrant
+vagrant --help
