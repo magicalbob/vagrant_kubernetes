@@ -7,7 +7,7 @@ sudo apt-get install -f
 sudo apt-get install -y python3-dev python3-pip iproute2 jq gettext virtualbox yq ruby-full
 sudo wget https://releases.hashicorp.com/vagrant/2.2.19/vagrant_2.2.19_x86_64.deb
 sudo dpkg -i vagrant_2.2.19_x86_64.deb
-alias vagrant=./vagrant.sh $@
+export PATH="~/.:$PATH"
 ./Vagrant_Kubernetes_Setup.sh UP_ONLY
 cat Vagrantfile
 echo "Checking Ruby syntax..."
