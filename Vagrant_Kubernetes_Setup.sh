@@ -134,7 +134,7 @@ done
 
 echo Clone the project to do the actual kubernetes cluster setup
 vagrant ssh -c 'rm -rf /home/vagrant/kubespray' node1
-vagrant ssh -c 'export GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no" && git clone git@github.com:kubernetes-sigs/kubespray.git /home/vagrant/kubespray' node1
+vagrant ssh -c 'git clone git@github.com:kubernetes-sigs/kubespray.git /home/vagrant/kubespray' node1
 if [ ! -z "$KUBESPRAY_VERSION" ]
 then
   echo Checkout tag $KUBESPRAY_VERSION
