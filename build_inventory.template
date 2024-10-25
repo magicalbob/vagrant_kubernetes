@@ -1,6 +1,6 @@
 export PUBLIC_NET=$PUB_NET
 declare -a IPS=()
-for ((i = 201; i <= 200 + $TOTAL_NODES; i++))
+for ((i = 211; i <= 210 + $TOTAL_NODES; i++))
 do
   IPS+=("PUBLIC_NET.i")
 done
