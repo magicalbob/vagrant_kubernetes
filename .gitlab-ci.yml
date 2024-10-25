@@ -19,6 +19,7 @@ up_only_job:
   stage: up_only_job
   tags:
     - linux
+  timeout: 3h
   script:
     - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T Vagrant_Kubernetes_Setup.sh $TEST_TARGET:Documents/src/test/Vagrant_Kubernetes_Setup.sh
     - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T config.json $TEST_TARGET:Documents/src/test/config.json
