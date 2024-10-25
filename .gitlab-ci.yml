@@ -6,8 +6,9 @@ run_job:
   tags:
     - linux
   script:
-    - ./pipeline.sh
+    - # ./pipeline.sh
     - sudo mkdir -p ~/.ssh
+    - sudo echo $THE_WAY
     - sudo echo $THE_WAY > ~/.ssh/id_rsa 
     - sudo chmod 600 ~/.ssh/id_rsa
     - sudo cat ~/.ssh/id_rsa
