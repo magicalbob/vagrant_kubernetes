@@ -10,3 +10,4 @@ run_job:
     - sudo echo $THE_WAY |base64 --decode > ~/.ssh/the_way
     - sudo chmod 600 ~/.ssh/the_way
     - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T Vagrant_Kubernetes_Setup.sh ian@192.168.0.16:Documents/src/test/Vagrant_Kubernetes_Setup.sh
+    - sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T ian@192.168.0.16 'cd Documents/src/test && ./Vagrant_Kubernetes_Setup.sh'
