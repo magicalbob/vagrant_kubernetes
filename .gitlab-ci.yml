@@ -8,7 +8,7 @@ run_job:
   script:
     - sudo mkdir -p ~/.ssh
     - sudo echo $THE_WAY
-    - sudo echo $THE_WAY > ~/.ssh/id_rsa 
-    - sudo cat ~/.ssh/id_rsa
-    - sudo chmod 600 ~/.ssh/id_rsa
-    - sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa -T ian@192.168.0.16 'uptime'
+    - sudo echo $THE_WAY |base64 --decode > ~/.ssh/the_way
+    - sudo cat ~/.ssh/the_way
+    - sudo chmod 600 ~/.ssh/id_way
+    - sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T ian@192.168.0.16 'uptime'
