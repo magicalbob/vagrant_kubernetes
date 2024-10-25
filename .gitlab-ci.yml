@@ -7,8 +7,8 @@ run_job:
     - linux
   script:
     - ./pipeline.sh
-    - mkdir -p ~/.ssh
-    - echo $THE_WAY > ~/.ssh/id_rsa 
-    - chmod 600 ~/.ssh/id_rsa
+    - sudo mkdir -p ~/.ssh
+    - sudo echo $THE_WAY > ~/.ssh/id_rsa 
+    - sudo chmod 600 ~/.ssh/id_rsa
     - sudo cat ~/.ssh/id_rsa
-    - ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa -T ian@192.168.0.16 'uptime'
+    - sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa -T ian@192.168.0.16 'uptime'
