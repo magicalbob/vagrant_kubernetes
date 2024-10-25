@@ -13,12 +13,6 @@ else
   export UP_ONLY=0
 fi
 
-if [[ "$1" == "PROVISION" ]]; then
-  export PROVISION=1
-else
-  export PROVISION=0
-fi
-
 echo Work out primary network adapter for Mac or linux
 if [[ $(uname) == "Darwin" ]]; then
   # For macOS
@@ -61,27 +55,6 @@ else
     echo "Script `basename $0` has finished"
     exit 0
   fi
-
-  if [ "$PROVISION" -eq 1 ]
-  then
-    echo Update all the nodes 
-    for i in $(seq 1 $TOTAL_NODES); do
-        vagrant ssh -c 'export DEBIAN_FRONTEND=noninteractive && sudo apt-get update -y' node$i
-    done
-
-    echo Upgrade all the nodes 
-    for i in $(seq 1 $TOTAL_NODES); do
-        vagrant ssh -c 'export DEBIAN_FRONTEND=noninteractive && sudo apt-get upgrade -y' node$i
-    done
-
-    echo Install net-tools on all the nodes 
-    for i in $(seq 1 $TOTAL_NODES); do
-        vagrant ssh -c 'export DEBIAN_FRONTEND=noninteractive && sudo apt-get install -y net-tools' node$i
-    done
-
-    echo "Script `basename $0` has finished"
-    exit 0
-  fi
 fi
 
 echo Generate the hosts.yaml content
@@ -91,9 +64,9 @@ HOSTS_YAML="all:
 for i in $(seq 1 $TOTAL_NODES); do
   HOSTS_YAML+="
     node$i:
-      ansible_host: ${PUB_NET}.20$i
-      ip: ${PUB_NET}.20$i
-      access_ip: ${PUB_NET}.20$i"
+      ansible_host: ${PUB_NET}.21$i
+      ip: ${PUB_NET}.21$i
+      access_ip: ${PUB_NET}.21$i"
 done
 
 HOSTS_YAML+="
@@ -156,20 +129,20 @@ done
 
 echo Do an intial ssh to each node from node1 
 for i in $(seq 1 $TOTAL_NODES); do
-  vagrant ssh -c "echo uptime|ssh -o StrictHostKeyChecking=no ${PUB_NET}.20${i}" node1
+  vagrant ssh -c "echo uptime|ssh -o StrictHostKeyChecking=no ${PUB_NET}.21${i}" node1
 done
 
 echo Clone the project to do the actual kubernetes cluster setup
 vagrant ssh -c 'rm -rf /home/vagrant/kubespray' node1
-vagrant ssh -c 'git clone https://github.com/kubernetes-sigs/kubespray.git /home/vagrant/kubespray' node1
-if [ ! -z "$KUBESPRAY_VERSION" ]
+vagrant ssh -c 'git clone https://github.com/kubernetes-sigs/kubespray.git /home/vagrant/kubespray || !!' node1
+if [ ! -z "$KUBESPRAY_VERSION" ] && [ "$KUBESPRAY_VERSION" != "null" ]
 then
   echo Checkout tag $KUBESPRAY_VERSION
   vagrant ssh -c "cd /home/vagrant/kubespray && git checkout $KUBESPRAY_VERSION" node1
 fi
 
 echo Python requirements
-vagrant ssh -c 'sudo DEBIAN_FRONTEND=noninteractive apt-get -y install python3.10-venv' node1
+vagrant ssh -c 'sudo apt-get update && sudo DEBIAN_FRONTEND=noninteractive apt-get -y install python3.10-venv' node1
 vagrant ssh -c 'python3 -m venv /home/vagrant/.py3kubespray'  node1
 vagrant ssh -c '. /home/vagrant/.py3kubespray/bin/activate && pip install -r /home/vagrant/kubespray/requirements.txt'  node1
 
@@ -177,7 +150,7 @@ echo Write /etc/hosts file
 echo Do an intial ssh to each node from node1
 cp hosts.template hosts
 for i in $(seq 1 $TOTAL_NODES); do
-  echo ${PUB_NET}.20${i} node${i} >> hosts
+  echo ${PUB_NET}.21${i} node${i} >> hosts
 done
 echo Copy hosts file to each node
 for i in $(seq 1 $TOTAL_NODES); do

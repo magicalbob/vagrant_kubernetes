@@ -1,9 +1,37 @@
-stages:
- - run_job
+before_script:
+  - sudo mkdir -p ~/.ssh
+  - echo "$THE_WAY" | base64 --decode | sudo tee ~/.ssh/the_way > /dev/null
+  - sudo chmod 600 ~/.ssh/the_way
 
-run_job:
-  stage: run_job
+stages:
+ - destroy_job
+ - up_only_job
+ - skip_up_job
+
+destroy_job:
+  stage: destroy_job
   tags:
     - linux
   script:
-    - ./pipeline.sh
+    - sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET 'cd Documents/src/test && vagrant destroy -f'
+
+up_only_job:
+  stage: up_only_job
+  tags:
+    - linux
+  timeout: 3h
+  script:
+    - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T Vagrant_Kubernetes_Setup.sh $TEST_TARGET:Documents/src/test/Vagrant_Kubernetes_Setup.sh
+    - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T config.json $TEST_TARGET:Documents/src/test/config.json
+    - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T Vagrantfile.template $TEST_TARGET:Documents/src/test/Vagrantfile.template
+    - sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET 'cd Documents/src/test && ./Vagrant_Kubernetes_Setup.sh UP_ONLY'
+
+skip_up_job:
+  stage: skip_up_job
+  tags:
+    - linux
+  script:
+    - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T hosts.template $TEST_TARGET:Documents/src/test/hosts.template
+    - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T addons.yml $TEST_TARGET:Documents/src/test/addons.yml
+    - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T build_inventory.template $TEST_TARGET:Documents/src/test/build_inventory.template
+    - sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET 'cd Documents/src/test && ./Vagrant_Kubernetes_Setup.sh SKIP_UP'
