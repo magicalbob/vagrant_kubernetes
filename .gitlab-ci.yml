@@ -1,5 +1,16 @@
 stages:
+ - destroy_job
  - run_job
+
+destroy_job:
+  stage: destroy_job
+  tags:
+    - linux
+  script:
+    - sudo mkdir -p ~/.ssh
+    - sudo echo $THE_WAY |base64 --decode > ~/.ssh/the_way
+    - sudo chmod 600 ~/.ssh/the_way
+    - sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T ian@192.168.0.16 'cd Documents/src/test && vagrant destroy -f'
 
 run_job:
   stage: run_job
