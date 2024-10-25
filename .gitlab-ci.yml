@@ -7,4 +7,6 @@ run_job:
     - linux
   script:
     - ./pipeline.sh
-    - ssh -o StrictHostKeyChecking=no -T ian@192.168.0.16 'uptime'
+    - mkdir -p ~/.ssh
+    - echo $THE_WAY > ~/.ssh/id_rsa 
+    - ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa -T ian@192.168.0.16 'uptime'
