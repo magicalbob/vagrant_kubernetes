@@ -32,4 +32,5 @@ skip_up_job:
   script:
     - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T hosts.template $TEST_TARGET:Documents/src/test/hosts.template
     - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T addons.yml $TEST_TARGET:Documents/src/test/addons.yml
+    - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T build_inventory.template $TEST_TARGET:Documents/src/test/build_inventory.template
     - sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET 'cd Documents/src/test && ./Vagrant_Kubernetes_Setup.sh SKIP_UP'
