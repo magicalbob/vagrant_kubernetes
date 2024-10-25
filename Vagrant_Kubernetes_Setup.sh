@@ -13,12 +13,6 @@ else
   export UP_ONLY=0
 fi
 
-if [[ "$1" == "PROVISION" ]]; then
-  export PROVISION=1
-else
-  export PROVISION=0
-fi
-
 echo Work out primary network adapter for Mac or linux
 if [[ $(uname) == "Darwin" ]]; then
   # For macOS
@@ -56,27 +50,6 @@ else
     while vagrant status | grep -q "not created (virtualbox)"; do
       echo "Not all nodes are created yet. Retrying..."
       vagrant up --no-provision
-    done
-
-    echo "Script `basename $0` has finished"
-    exit 0
-  fi
-
-  if [ "$PROVISION" -eq 1 ]
-  then
-    echo Update all the nodes 
-    for i in $(seq 1 $TOTAL_NODES); do
-        vagrant ssh -c 'export DEBIAN_FRONTEND=noninteractive && sudo apt-get update -y' node$i
-    done
-
-    echo Upgrade all the nodes 
-    for i in $(seq 1 $TOTAL_NODES); do
-        vagrant ssh -c 'export DEBIAN_FRONTEND=noninteractive && sudo apt-get upgrade -y' node$i
-    done
-
-    echo Install net-tools on all the nodes 
-    for i in $(seq 1 $TOTAL_NODES); do
-        vagrant ssh -c 'export DEBIAN_FRONTEND=noninteractive && sudo apt-get install -y net-tools' node$i
     done
 
     echo "Script `basename $0` has finished"
