@@ -10,6 +10,7 @@ destroy_job:
     - sudo mkdir -p ~/.ssh
     - sudo echo $THE_WAY |base64 --decode > ~/.ssh/the_way
     - sudo chmod 600 ~/.ssh/the_way
+    - echo DEBUG $TEST_TARGET
     - sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET 'cd Documents/src/test && vagrant destroy -f'
 
 run_job:
