@@ -33,6 +33,7 @@ skip_up_job:
   stage: skip_up_job
   tags:
     - linux
+  timeout: 3h
   script:
     - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T hosts.template $TEST_TARGET:Documents/src/test/hosts.template
     - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T addons.yml $TEST_TARGET:Documents/src/test/addons.yml
