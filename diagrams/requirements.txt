@@ -1,7 +1,7 @@
 asttokens==2.4.1
 decorator==5.1.1
 diagrams==0.24.1
-executing==2.0.1
+executing==2.1.0
 graphviz==0.20.3
 ipython==8.21.0
 jedi==0.19.1
