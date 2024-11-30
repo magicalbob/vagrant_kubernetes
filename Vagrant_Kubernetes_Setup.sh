@@ -1,5 +1,59 @@
 #!/usr/bin/env bash
 
+function post_alert {
+
+  # Requires: INCIDENT_TITLE, INCIDENT_SEVERITY, SERVICE_AFFECTED, SHORT_DESCRIPTION, DETAILED_DESCRIPTION
+  INCIDENT_TITLE=$1
+  INCIDENT_SEVERITY=$2
+  SERVICE_AFFECTED=$3
+  SHORT_DESCRIPTION=$4
+  DETAILED_DESCRIPTION=$5
+  cat <<EOF > alert.json
+{
+  "version": "4",
+  "groupKey": "{alertname=\"$INCIDENT_TITLE\"}",
+  "status": "firing",
+  "receiver": "TestMonitor",
+  "groupLabels": {
+    "alertname": "$INCIDENT_TITLE"
+  },
+  "commonLabels": {
+    "alertname": "$INCIDENT_TITLE",
+    "severity": "$INCIDENT_SEVERITY",
+    "service": "$SERVICE_AFFECTED",
+    "monitoring_tool": "script"
+  },
+  "commonAnnotations": {
+    "summary": "$SHORT_DESCRIPTION",
+    "description": "$DETAILED_DESCRIPTION"
+  },
+  "externalURL": "https://gitlab.ellisbs.co.uk",
+  "alerts": [
+    {
+      "status": "firing",
+      "labels": {
+        "alertname": "$INCIDENT_TITLE",
+        "severity": "$INCIDENT_SEVERITY",
+        "service": "$SERVICE_AFFECTED",
+        "monitoring_tool": "script"
+      },
+      "annotations": {
+        "summary": "$SHORT_DESCRIPTION",
+        "description": "$DETAILED_DESCRIPTION"
+      },
+      "startsAt": "$INCIDENT_DATE",
+      "endsAt": "$INCIDENT_DATE",
+      "generatorURL": "https://gitlab.ellisbs.co.uk"
+    }
+  ]
+}
+EOF
+  curl -vf -X POST "$WEBHOOK_URL" \
+          -H "Content-Type: application/json" \
+          -H "Authorization: Bearer $AUTHORIZATION_KEY" \
+          -d @alert.json
+}
+
 # Check for other command line arguments
 if [[ "$1" == "SKIP_UP" ]]; then
   export SKIP_UP=1
@@ -197,7 +251,7 @@ then
   echo Install k8sgpt
   vagrant ssh -c "curl -Lo /tmp/k8sgpt.deb https://github.com/k8sgpt-ai/k8sgpt/releases/download/v0.3.24/k8sgpt_$(uname -m|sed 's/x86_64/amd64/').deb" node1
   vagrant ssh -c 'sudo dpkg -i /tmp/k8sgpt.deb' node1
-  vagrant ssh -c "k8sgpt auth add --backend openai --model gpt-3.5-turbo --password $OPENAI_API_KEY" node1
+  vagrant ssh -c "k8sgpt auth add --backend openai --model gpt-3.5-turbo --password $OPENAI_API_KEY" node1||post_alert "Cannot install k8sgpt" "High" "k8s" "k8sgpt failed to install" "'k8sgpt auth add --backend openai --model gpt-3.5-turbo --password $OPENAI_API_KEY" node1' failed"
 fi
 
 echo "Script `basename $0` has finished"
