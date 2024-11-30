@@ -220,7 +220,7 @@ vagrant ssh -c 'cp /vagrant/hosts.yaml /home/vagrant/kubespray/inventory/vagrant
 envsubst < build_inventory.template | sed 's/PUBLIC_NET.i/$PUBLIC_NET.$i/' > build_inventory.sh
 chmod +x build_inventory.sh
 echo Execute build_inventory.sh
-vagrant ssh -c 'bash -c /vagrant/build_inventory.sh' node1||post_alert "execute build_inventory.sh failed" "Critical" "k8s" "script" "execute build_inventory.sh failed" "execute build_inventory.sh failed"
+vagrant ssh -c 'bash -c /vagrant/build_inventory.sh' node1
 
 vagrant ssh -c 'cp /vagrant/addons.yml /home/vagrant/kubespray/inventory/vagrant_kubernetes/group_vars/k8s_cluster/addons.yml' node1||post_alert "addons yaml copy failed" "Critical" "k8s" "script" "copy of addons.yml failed" "copy of addons.yml to node1 failed"
 
@@ -230,7 +230,7 @@ vagrant ssh -c 'sed -i "/- 8.8.8.8/s/^# *//" ~/kubespray/inventory/vagrant_kuber
 vagrant ssh -c 'sed -i "/- 8.8.4.4/s/^# *//" ~/kubespray/inventory/vagrant_kubernetes/group_vars/all/all.yml' node1||post_alert "adding secondary google dns failed" "Critical" "k8s" "script" "secondary google dns add failed" "unable to add secondary dns server"
 
 echo Disable firewalls, enable IPv4 forwarding and switch off swap
-vagrant ssh -c '. /home/vagrant/.py3kubespray/bin/activate && ansible all -i /home/vagrant/kubespray/inventory/vagrant_kubernetes/hosts.yaml -m shell -a "sudo systemctl stop firewalld && sudo systemctl disable firewalld"' node1||post_alert "stop firewall failed" "Critical" "k8s" "script" "unable to stop firewall" "firewall stop failed"
+vagrant ssh -c '. /home/vagrant/.py3kubespray/bin/activate && ansible all -i /home/vagrant/kubespray/inventory/vagrant_kubernetes/hosts.yaml -m shell -a "sudo systemctl stop firewalld && sudo systemctl disable firewalld"' node1
 vagrant ssh -c '. /home/vagrant/.py3kubespray/bin/activate && ansible all -i /home/vagrant/kubespray/inventory/vagrant_kubernetes/hosts.yaml -m shell -a "echo net.ipv4.ip_forward=1 | sudo tee -a /etc/sysctl.conf"' node1||post_alert "ip forward off failed" "Critical" "k8s" "script" "ip forward off failed" "no ip forward failed"
 vagrant ssh -c '. /home/vagrant/.py3kubespray/bin/activate && ansible all -i /home/vagrant/kubespray/inventory/vagrant_kubernetes/hosts.yaml -m shell -a "sudo sed -i \"/ swap / s/^\(.*\)$/#\1/g\" /etc/fstab && sudo swapoff -a"' node1||post_alert "swapoff failed" "Critical" "k8s" "script" "switch off of swap failed" "swap off failed"
 
