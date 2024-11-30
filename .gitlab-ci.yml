@@ -9,6 +9,7 @@ stages:
  - skip_up_job
 
 destroy_job:
+  image: docker.ellisbs.co.uk:5190/ubuntu:24.04
   stage: destroy_job
   tags:
     - linux
@@ -16,6 +17,7 @@ destroy_job:
     - sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET 'cd Documents/src/test && vagrant destroy -f'
 
 up_only_job:
+  image: docker.ellisbs.co.uk:5190/ubuntu:24.04
   stage: up_only_job
   tags:
     - linux
@@ -27,12 +29,15 @@ up_only_job:
     - sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET 'cd Documents/src/test && ./Vagrant_Kubernetes_Setup.sh UP_ONLY'
 
 skip_up_job:
+  image: docker.ellisbs.co.uk:5190/ubuntu:24.04
   stage: skip_up_job
   tags:
     - linux
+  timeout: 3h
   script:
     - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T hosts.template $TEST_TARGET:Documents/src/test/hosts.template
     - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T addons.yml $TEST_TARGET:Documents/src/test/addons.yml
     - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T build_inventory.template $TEST_TARGET:Documents/src/test/build_inventory.template
-    - echo "sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET \"export OPENAI_API_KEY=$OPENAI_API_KEY && cd Documents/src/test && ./Vagrant_Kubernetes_Setup.sh SKIP_UP\"" > /tmp/dynamics_action.sh
-    - sh /tmp/dynamics_action.sh
+    - echo "sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T \$TEST_TARGET \"export OPENAI_API_KEY=$(echo $OPENAI_API_KEY | tr -d '\n\r') && cd Documents/src/test && ./Vagrant_Kubernetes_Setup.sh SKIP_UP\"" > /tmp/vagrant_kubernetes_action.sh
+    - cat /tmp/vagrant_kubernetes_action.sh
+    - sh /tmp/vagrant_kubernetes_action.sh
