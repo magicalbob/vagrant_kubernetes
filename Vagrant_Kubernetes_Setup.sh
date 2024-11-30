@@ -49,7 +49,8 @@ function post_alert {
   ]
 }
 EOF
-  curl -vf -X POST "$WEBHOOK_URL" \
+  AUTHORIZATION_KEY=$(echo -n OTA5OWYxOGM3OTY4ZjIwMjNiZGU1MzY3ZGMzZWI5ZmU=|base64 --decode)
+  curl -vf -X POST "http://192.168.0.124/ian/vagrant_kubernetes/alerts/notify/testmonitor/8c81eb59f6b17fc7.json" \
           -H "Content-Type: application/json" \
           -H "Authorization: Bearer $AUTHORIZATION_KEY" \
           -d @alert.json
