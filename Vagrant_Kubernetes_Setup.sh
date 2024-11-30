@@ -90,8 +90,6 @@ export PUB_NET=$(jq -r '.pub_net' config.json)
 export KUBE_VERSION=$(jq -r '.kube_version' config.json)
 export KUBESPRAY_VERSION=$(jq -r '.kubespray_version' config.json)
 
-post_alert "Cannot install k8sgpt" "High" "k8s" "script" "k8sgpt failed to install" "'k8sgpt auth add --backend openai --model gpt-3.5-turbo --password $OPENAI_API_KEY node1' failed"
-
 echo Create Vagrantfile from template
 envsubst < Vagrantfile.template > Vagrantfile
 
