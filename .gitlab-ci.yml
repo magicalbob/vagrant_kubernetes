@@ -63,7 +63,7 @@ validate_cluster:
     # Copy validation script to the target machine
     - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T validate_cluster.rb $TEST_TARGET:Documents/src/test/validate_cluster.rb
     # Execute the validation script using Cinc
-    - sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET 'cinc-client --local-mode --runlist "validate_cluster.rb"'
+    - sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET 'cinc-client --local-mode --config "/home/ian/validate_cluster.rb"'
   artifacts:
     paths:
       - validate_cluster.log
