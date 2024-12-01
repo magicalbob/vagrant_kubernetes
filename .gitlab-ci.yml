@@ -7,6 +7,7 @@ stages:
  - destroy_job
  - up_only_job
  - skip_up_job
+ - validate_cluster
 
 destroy_job:
   image: docker.ellisbs.co.uk:5190/ubuntu:24.04
@@ -41,3 +42,29 @@ skip_up_job:
     - echo "sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T \$TEST_TARGET \"export OPENAI_API_KEY=$(echo $OPENAI_API_KEY | tr -d '\n\r') && export ALERT_WEBHOOK_URL=$ALERT_WEBHOOK_URL && export ALERT_AUTH_KEY=$ALERT_AUTH_KEY && cd Documents/src/test && ./Vagrant_Kubernetes_Setup.sh SKIP_UP\"" > /tmp/vagrant_kubernetes_action.sh
     - cat /tmp/vagrant_kubernetes_action.sh
     - sh /tmp/vagrant_kubernetes_action.sh
+
+validate_cluster:
+  image: docker.ellisbs.co.uk:5190/ubuntu:24.04
+  stage: validate_cluster
+  tags:
+    - linux
+  timeout: 1h
+  script:
+    # Install Cinc
+    - sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET '
+        if ! command -v cinc-client &> /dev/null; then
+          echo "Installing Cinc Client...";
+          curl -L https://omnitruck.cinc.sh/install.sh | sudo bash;
+        else
+          echo "Cinc Client is already installed.";
+        fi
+      '
+    # Copy validation script to the target machine
+    - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T validate_cluster.rb $TEST_TARGET:Documents/src/test/validate_cluster.rb
+    # Execute the validation script using Cinc
+    - sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET 'cinc-client --local-mode --runlist "validate_cluster.rb"'
+  artifacts:
+    paths:
+      - validate_cluster.log
+  dependencies:
+    - up_only_job
