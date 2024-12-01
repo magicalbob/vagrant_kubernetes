@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+# Get the post alert common function
+curl -o alert_functions.sh https://gitlab.ellisbs.co.uk/-/snippets/1/raw
+source alert_functions.sh
+
 # Check for other command line arguments
 if [[ "$1" == "SKIP_UP" ]]; then
   export SKIP_UP=1
