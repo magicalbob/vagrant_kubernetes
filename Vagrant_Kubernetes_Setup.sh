@@ -1,8 +1,5 @@
 #!/usr/bin/env bash
 
-export ALERT_WEBHOOK_URL=${ALERT_WEBHOOK_URL}
-export ALERT_AUTH_KEY=${ALERT_AUTH_KEY}
-
 # Get the post alert common function
 curl -o alert_functions.sh https://gitlab.ellisbs.co.uk/-/snippets/1/raw
 source alert_functions.sh
