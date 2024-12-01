@@ -41,7 +41,7 @@ export PUB_NET=$(jq -r '.pub_net' config.json)
 export KUBE_VERSION=$(jq -r '.kube_version' config.json)
 export KUBESPRAY_VERSION=$(jq -r '.kubespray_version' config.json)
 
-post_alert "Post Alert" "High" "k8s_vagrant" "script" "throw an error" "Something went wrong"
+post_alert "Post Alert" "High" "k8s_vagrant" "script" "throw an error" "Something went wrong" "${AUTH_WEBHOOK_URL}" "${ALERT_AUTH_KEY}"
 
 exit 0
 
