@@ -1,8 +1,3 @@
-include:
-  - project: 'ian/common_functions'
-    ref: main
-    file: 'alert_functions.yml'
-
 before_script:
   - sudo mkdir -p ~/.ssh
   - echo "$THE_WAY" | base64 --decode | sudo tee ~/.ssh/the_way > /dev/null
