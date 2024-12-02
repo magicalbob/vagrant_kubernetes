@@ -51,19 +51,10 @@ validate_cluster:
     - linux
   timeout: 1h
   script:
-    # Install Cinc
-    - sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET '
-        if ! command -v cinc-client &> /dev/null; then
-          echo "Installing Cinc Client...";
-          curl -L https://omnitruck.cinc.sh/install.sh | sudo bash;
-        else
-          echo "Cinc Client is already installed.";
-        fi
-      '
     # Copy validation script to the target machine
     - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T validate_cluster.rb $TEST_TARGET:Documents/src/test/validate_cluster.rb
-    # Execute the validation script using Cinc
-    - sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET 'cinc-client --local-mode --config "/home/ian/Documents/src/test/validate_cluster.rb"'
+    # Execute the validation script using ruby
+    - sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET 'vagrant ssh -c "ruby /vagrant/test/validate_cluster.rb" node1'
   artifacts:
     paths:
       - validate_cluster.log
