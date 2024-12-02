@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+# Get the post alert common function
+curl -o alert_functions.sh https://gitlab.ellisbs.co.uk/-/snippets/1/raw
+source alert_functions.sh
+
 # Check for other command line arguments
 if [[ "$1" == "SKIP_UP" ]]; then
   export SKIP_UP=1
@@ -141,8 +145,8 @@ then
   vagrant ssh -c "cd /home/vagrant/kubespray && git checkout $KUBESPRAY_VERSION" node1
 fi
 
-echo Python requirements
-vagrant ssh -c 'sudo apt-get update && sudo DEBIAN_FRONTEND=noninteractive apt-get -y install python3.10-venv' node1
+echo "Python requirements (and ruby)"
+vagrant ssh -c 'sudo apt-get update && sudo DEBIAN_FRONTEND=noninteractive apt-get -y install python3.10-venv ruby' node1
 vagrant ssh -c 'python3 -m venv /home/vagrant/.py3kubespray'  node1
 vagrant ssh -c '. /home/vagrant/.py3kubespray/bin/activate && pip install -r /home/vagrant/kubespray/requirements.txt'  node1
 
@@ -166,38 +170,38 @@ chmod +x build_inventory.sh
 echo Execute build_inventory.sh
 vagrant ssh -c 'bash -c /vagrant/build_inventory.sh' node1
 
-vagrant ssh -c 'cp /vagrant/addons.yml /home/vagrant/kubespray/inventory/vagrant_kubernetes/group_vars/k8s_cluster/addons.yml' node1
+vagrant ssh -c 'cp /vagrant/addons.yml /home/vagrant/kubespray/inventory/vagrant_kubernetes/group_vars/k8s_cluster/addons.yml' node1||post_alert "addons yaml copy failed" "Critical" "k8s" "script" "copy of addons.yml failed" "copy of addons.yml to node1 failed"
 
 echo Uncomment upstream dns servers in all.yaml
-vagrant ssh -c 'sed -i "/upstream_dns_servers:/s/^# *//" ~/kubespray/inventory/vagrant_kubernetes/group_vars/all/all.yml' node1
-vagrant ssh -c 'sed -i "/- 8.8.8.8/s/^# *//" ~/kubespray/inventory/vagrant_kubernetes/group_vars/all/all.yml' node1
-vagrant ssh -c 'sed -i "/- 8.8.4.4/s/^# *//" ~/kubespray/inventory/vagrant_kubernetes/group_vars/all/all.yml' node1
+vagrant ssh -c 'sed -i "/upstream_dns_servers:/s/^# *//" ~/kubespray/inventory/vagrant_kubernetes/group_vars/all/all.yml' node1||post_alert "uncomment of upstream servers failed" "Critical" "k8s" "script" "uncomment of upstream servers failed" "uncomment of upstream servers in all.yaml failed"
+vagrant ssh -c 'sed -i "/- 8.8.8.8/s/^# *//" ~/kubespray/inventory/vagrant_kubernetes/group_vars/all/all.yml' node1||post_alert "adding primary google dns failed" "Critical" "k8s" "script" "primary google dns add failed" "unable to add primary dns server"
+vagrant ssh -c 'sed -i "/- 8.8.4.4/s/^# *//" ~/kubespray/inventory/vagrant_kubernetes/group_vars/all/all.yml' node1||post_alert "adding secondary google dns failed" "Critical" "k8s" "script" "secondary google dns add failed" "unable to add secondary dns server"
 
 echo Disable firewalls, enable IPv4 forwarding and switch off swap
 vagrant ssh -c '. /home/vagrant/.py3kubespray/bin/activate && ansible all -i /home/vagrant/kubespray/inventory/vagrant_kubernetes/hosts.yaml -m shell -a "sudo systemctl stop firewalld && sudo systemctl disable firewalld"' node1
-vagrant ssh -c '. /home/vagrant/.py3kubespray/bin/activate && ansible all -i /home/vagrant/kubespray/inventory/vagrant_kubernetes/hosts.yaml -m shell -a "echo net.ipv4.ip_forward=1 | sudo tee -a /etc/sysctl.conf"' node1
-vagrant ssh -c '. /home/vagrant/.py3kubespray/bin/activate && ansible all -i /home/vagrant/kubespray/inventory/vagrant_kubernetes/hosts.yaml -m shell -a "sudo sed -i \"/ swap / s/^\(.*\)$/#\1/g\" /etc/fstab && sudo swapoff -a"' node1
+vagrant ssh -c '. /home/vagrant/.py3kubespray/bin/activate && ansible all -i /home/vagrant/kubespray/inventory/vagrant_kubernetes/hosts.yaml -m shell -a "echo net.ipv4.ip_forward=1 | sudo tee -a /etc/sysctl.conf"' node1||post_alert "ip forward off failed" "Critical" "k8s" "script" "ip forward off failed" "no ip forward failed"
+vagrant ssh -c '. /home/vagrant/.py3kubespray/bin/activate && ansible all -i /home/vagrant/kubespray/inventory/vagrant_kubernetes/hosts.yaml -m shell -a "sudo sed -i \"/ swap / s/^\(.*\)$/#\1/g\" /etc/fstab && sudo swapoff -a"' node1||post_alert "swapoff failed" "Critical" "k8s" "script" "switch off of swap failed" "swap off failed"
 
 echo Do install of kubernetes
-vagrant ssh -c '. /home/vagrant/.py3kubespray/bin/activate && cd /home/vagrant/kubespray && ansible-playbook -i /home/vagrant/kubespray/inventory/vagrant_kubernetes/hosts.yaml --become --become-user=root /home/vagrant/kubespray/cluster.yml' node1
+vagrant ssh -c '. /home/vagrant/.py3kubespray/bin/activate && cd /home/vagrant/kubespray && ansible-playbook -i /home/vagrant/kubespray/inventory/vagrant_kubernetes/hosts.yaml --become --become-user=root /home/vagrant/kubespray/cluster.yml' node1||post_alert "install of kubernetes failed" "Critical" "k8s" "script" "kubernetes install failed" "kubernetes install failed"
 
 echo Now copy /root/.kube/config to vagrant user
-vagrant ssh -c 'mkdir -p /home/vagrant/.kube' node1
-vagrant ssh -c 'sudo cp /root/.kube/config /home/vagrant/.kube/config' node1
-vagrant ssh -c 'sudo chown vagrant:vagrant /home/vagrant/.kube/config' node1
+vagrant ssh -c 'mkdir -p /home/vagrant/.kube' node1||post_alert "mkdir for kube config failed" "Critical" "k8s" "script" "mkdir failed" "mkdir of dir for kube config failed"
+vagrant ssh -c 'sudo cp /root/.kube/config /home/vagrant/.kube/config' node1||post_alert "copy kube config failed" "Critical" "k8s" "script" "copy failed" "copy of kube config failed"
+vagrant ssh -c 'sudo chown vagrant:vagrant /home/vagrant/.kube/config' node1||post_alert "chown kube config failed" "Critical" "k8s" "script" "chown failed" "chown of kube config failed"
 
 echo Install helm
-vagrant ssh -c 'sudo snap install helm --classic' node1
+vagrant ssh -c 'sudo snap install helm --classic' node1||post_alert "install helm failed" "High" "k8s" "script" "helm install failed" "install of helm failed"
 
 echo Install Metrics Server
-vagrant ssh -c 'kubectl apply -f https://dev.ellisbs.co.uk/files/components.yaml' node1
+vagrant ssh -c 'kubectl apply -f https://dev.ellisbs.co.uk/files/components.yaml' node1||post_alert "install metrics server failed" "High" "k8s" "script" "metrics server install failed" "install of metrics server from ellisbs failed"
 
 if [ ! -z "$OPENAI_API_KEY" ]
 then
   echo Install k8sgpt
-  vagrant ssh -c "curl -Lo /tmp/k8sgpt.deb https://github.com/k8sgpt-ai/k8sgpt/releases/download/v0.3.24/k8sgpt_$(uname -m|sed 's/x86_64/amd64/').deb" node1
-  vagrant ssh -c 'sudo dpkg -i /tmp/k8sgpt.deb' node1
-  vagrant ssh -c "k8sgpt auth add --backend openai --model gpt-3.5-turbo --password $OPENAI_API_KEY" node1
+  vagrant ssh -c "curl -Lo /tmp/k8sgpt.deb https://github.com/k8sgpt-ai/k8sgpt/releases/download/v0.3.24/k8sgpt_$(uname -m|sed 's/x86_64/amd64/').deb" node1||post_alert "Cannot download k8sgpt" "High" "k8s" "script" "k8sgpt download failed" "download of k8s debian package failed"
+  vagrant ssh -c 'sudo dpkg -i /tmp/k8sgpt.deb' node1||post_alert "Cannot install k8sgpt" "High" "k8s" "script" "k8sgpt failed to install" "dpkg install of k8sgpt.deb failed"
+  vagrant ssh -c "k8sgpt auth add --backend openai --model gpt-3.5-turbo --password $OPENAI_API_KEY" node1||post_alert "Cannot install k8sgpt" "High" "k8s" "script" "k8sgpt failed to install" "'k8sgpt auth add --backend openai --model gpt-3.5-turbo --password $OPENAI_API_KEY node1' failed"
 fi
 
 echo "Script `basename $0` has finished"
