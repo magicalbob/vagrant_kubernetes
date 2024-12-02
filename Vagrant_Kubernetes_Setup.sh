@@ -145,8 +145,8 @@ then
   vagrant ssh -c "cd /home/vagrant/kubespray && git checkout $KUBESPRAY_VERSION" node1
 fi
 
-echo Python requirements
-vagrant ssh -c 'sudo apt-get update && sudo DEBIAN_FRONTEND=noninteractive apt-get -y install python3.10-venv' node1
+echo Python requirements (and ruby)
+vagrant ssh -c 'sudo apt-get update && sudo DEBIAN_FRONTEND=noninteractive apt-get -y install python3.10-venv ruby' node1
 vagrant ssh -c 'python3 -m venv /home/vagrant/.py3kubespray'  node1
 vagrant ssh -c '. /home/vagrant/.py3kubespray/bin/activate && pip install -r /home/vagrant/kubespray/requirements.txt'  node1
 
