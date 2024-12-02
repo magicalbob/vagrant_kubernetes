@@ -54,7 +54,7 @@ validate_cluster:
     # Copy validation script to the target machine
     - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T validate_cluster.rb $TEST_TARGET:Documents/src/test/validate_cluster.rb
     # Execute the validation script using ruby
-    - sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET 'cd Documents/src/test && vagrant ssh -c "ruby /vagrant/validate_cluster.rb" node1'
+    - sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET 'cd Documents/src/test && vagrant ssh -c "ruby /vagrant/validate_cluster.rb|tee /vagrant/validate_cluster.log" node1'
   artifacts:
     paths:
       - validate_cluster.log
