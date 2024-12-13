@@ -10,6 +10,7 @@ stages:
 
 destroy_job:
   stage: destroy_job
+  image: docker.ellisbs.co.uk:5190/ubuntu:24.04
   tags:
     - linux
   script:
@@ -17,6 +18,7 @@ destroy_job:
 
 up_only_job:
   stage: up_only_job
+  image: docker.ellisbs.co.uk:5190/ubuntu:24.04
   tags:
     - linux
   timeout: 3h
@@ -28,6 +30,7 @@ up_only_job:
 
 skip_up_job:
   stage: skip_up_job
+  image: docker.ellisbs.co.uk:5190/ubuntu:24.04
   tags:
     - linux
   script:
