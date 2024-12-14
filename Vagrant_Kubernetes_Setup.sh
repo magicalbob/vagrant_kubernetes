@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+o!/usr/bin/env bash
 
 # Check for other command line arguments
 if [[ "$1" == "SKIP_UP" ]]; then
@@ -39,17 +39,24 @@ envsubst < Vagrantfile.template > Vagrantfile
 
 if [ "$SKIP_UP" -eq 1 ]
 then
-  echo Skipping upping and provisioning
+  echo "Skipping upping and provisioning"
 else
   if [ "$UP_ONLY" -eq 1 ]
   then
-    echo Bring up all the nodes without provisioning
+    echo "Bring up all the nodes without provisioning"
     vagrant up --no-provision
 
-    echo Loop to check if all nodes are created and then provision
+    echo "Loop to check if all nodes are created and then provision"
     while vagrant status | grep -q "not created (virtualbox)"; do
       echo "Not all nodes are created yet. Retrying..."
       vagrant up --no-provision
+    done
+
+    echo "Update and upgrade each node" 
+    for i in $(seq 1 $TOTAL_NODES); do
+      vagrant ssh -c 'sudo apt-get update' node$i
+      vagrant ssh -c 'sudo apt-get upgrade -y' node$i
+      vagrant ssh -c 'sudo apt-get install -y net-tools' node$i
     done
 
     echo "Script `basename $0` has finished"
@@ -57,7 +64,7 @@ else
   fi
 fi
 
-echo Generate the hosts.yaml content
+echo "Generate the hosts.yaml content"
 HOSTS_YAML="all:
   hosts:"
 
@@ -132,16 +139,33 @@ for i in $(seq 1 $TOTAL_NODES); do
   vagrant ssh -c "echo uptime|ssh -o StrictHostKeyChecking=no ${PUB_NET}.21${i}" node1
 done
 
-echo Clone the project to do the actual kubernetes cluster setup
-vagrant ssh -c 'rm -rf /home/vagrant/kubespray' node1
-vagrant ssh -c 'git clone https://github.com/kubernetes-sigs/kubespray.git /home/vagrant/kubespray || !!' node1
-if [ ! -z "$KUBESPRAY_VERSION" ] && [ "$KUBESPRAY_VERSION" != "null" ]
-then
-  echo Checkout tag $KUBESPRAY_VERSION
-  vagrant ssh -c "cd /home/vagrant/kubespray && git checkout $KUBESPRAY_VERSION" node1
+echo "Clone the project to do the actual kubernetes cluster setup"
+vagrant ssh node1 -c '
+    MAX_ATTEMPTS=3
+    ATTEMPT=1
+    while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
+        echo "Attempt $ATTEMPT of $MAX_ATTEMPTS"
+        if [ ! -d "/home/vagrant/kubespray" ] || [ -z "$(ls -A /home/vagrant/kubespray)" ]; then
+            git clone https://github.com/kubernetes-sigs/kubespray.git /home/vagrant/kubespray && break
+        else
+            echo "Directory exists and is not empty. Removing contents..."
+            rm -rf /home/vagrant/kubespray/*
+        fi
+        ATTEMPT=$((ATTEMPT+1))
+        [ $ATTEMPT -le $MAX_ATTEMPTS ] && echo "Retrying in 5 seconds..." && sleep 5
+    done
+    if [ $ATTEMPT -gt $MAX_ATTEMPTS ]; then
+        echo "Failed to clone repository after $MAX_ATTEMPTS attempts"
+        exit 1
+    fi
+'
+
+if [ ! -z "$KUBESPRAY_VERSION" ] && [ "$KUBESPRAY_VERSION" != "null" ]; then
+    echo "Checkout tag $KUBESPRAY_VERSION"
+    vagrant ssh node1 -c "cd /home/vagrant/kubespray && git checkout $KUBESPRAY_VERSION"
 fi
 
-echo Python requirements
+echo "Python requirements"
 vagrant ssh -c 'sudo apt-get update && sudo DEBIAN_FRONTEND=noninteractive apt-get -y install python3.10-venv' node1
 vagrant ssh -c 'python3 -m venv /home/vagrant/.py3kubespray'  node1
 vagrant ssh -c '. /home/vagrant/.py3kubespray/bin/activate && pip install -r /home/vagrant/kubespray/requirements.txt'  node1

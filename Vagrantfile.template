@@ -20,13 +20,6 @@ Vagrant.configure("2") do |config|
   (1..${TOTAL_NODES}).each do |i|
     config.vm.define "node#{i}" do |node|
       node.vm.network "private_network", ip: "${PUB_NET}.21#{i}"
-
-      # Provision the VM with shell script
-      node.vm.provision "shell", inline: <<-SHELL
-        sudo apt-get update
-        sudo apt-get upgrade -y
-	sudo apt-get install -y net-tools
-      SHELL
     end
   end
 
