@@ -70,6 +70,27 @@ else
       vagrant ssh -c "sudo cp /vagrant/hosts /etc/hosts" node${i}
     done
 
+    echo Set up ssh between the nodes
+    vagrant upload ~/.vagrant.d/insecure_private_key /home/vagrant/.ssh/id_rsa node1
+
+    echo Now create the public key from it
+    ssh-keygen -y -f ~/.vagrant.d/insecure_private_key > ./insecure_public_key
+
+    echo Copy the public key to each node
+    for i in $(seq 1 $TOTAL_NODES); do
+      vagrant upload ./insecure_public_key /home/vagrant/.ssh/id_rsa.pub node$i
+    done
+
+    echo Append the public key to the authorized_keys file on each node
+    for i in $(seq 1 $TOTAL_NODES); do
+      vagrant ssh -c 'cat /home/vagrant/.ssh/id_rsa.pub >> /home/vagrant/.ssh/authorized_keys' node$i
+    done
+
+    echo Do an intial ssh to each node from node1 
+    for i in $(seq 1 $TOTAL_NODES); do
+      vagrant ssh -c "echo uptime|ssh -o StrictHostKeyChecking=no ${PUB_NET}.21${i}" node1
+    done
+
     echo "Script `basename $0` has finished"
     exit 0
   fi
@@ -128,27 +149,6 @@ HOSTS_YAML+="
 
 echo "Write the hosts.yaml content to the file"
 echo "$HOSTS_YAML" > hosts.yaml
-
-echo Set up ssh between the nodes
-vagrant upload ~/.vagrant.d/insecure_private_key /home/vagrant/.ssh/id_rsa node1
-
-echo Now create the public key from it
-ssh-keygen -y -f ~/.vagrant.d/insecure_private_key > ./insecure_public_key
-
-echo Copy the public key to each node
-for i in $(seq 1 $TOTAL_NODES); do
-  vagrant upload ./insecure_public_key /home/vagrant/.ssh/id_rsa.pub node$i
-done
-
-echo Append the public key to the authorized_keys file on each node
-for i in $(seq 1 $TOTAL_NODES); do
-  vagrant ssh -c 'cat /home/vagrant/.ssh/id_rsa.pub >> /home/vagrant/.ssh/authorized_keys' node$i
-done
-
-echo Do an intial ssh to each node from node1 
-for i in $(seq 1 $TOTAL_NODES); do
-  vagrant ssh -c "echo uptime|ssh -o StrictHostKeyChecking=no ${PUB_NET}.21${i}" node1
-done
 
 echo "Clone the project to do the actual kubernetes cluster setup"
 vagrant ssh node1 -c '
