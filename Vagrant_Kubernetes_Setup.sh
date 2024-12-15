@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+8#!/usr/bin/env bash
 
 # Copy insecure key into place
 cp ~/.vagrant.d/insecure_private_key ./insecure_private_key
@@ -207,7 +207,7 @@ vagrant ssh -c '. /home/vagrant/.py3kubespray/bin/activate && ansible all -i /ho
 vagrant ssh -c '. /home/vagrant/.py3kubespray/bin/activate && ansible all -i /home/vagrant/kubespray/inventory/vagrant_kubernetes/hosts.yaml -m shell -a "sudo sed -i \"/ swap / s/^\(.*\)$/#\1/g\" /etc/fstab && sudo swapoff -a"' "${NODE_NAME}1"
 
 echo "Do install of kubernetes"
-vagrant ssh -c '. /home/vagrant/.py3kubespray/bin/activate && cd /home/vagrant/kubespray && ansible-playbook -i /home/vagrant/kubespray/inventory/vagrant_kubernetes/hosts.yaml --become --become-user=root /home/vagrant/kubespray/cluster.yml' '${NODE_NAME}1"
+vagrant ssh -c '. /home/vagrant/.py3kubespray/bin/activate && cd /home/vagrant/kubespray && ansible-playbook -i /home/vagrant/kubespray/inventory/vagrant_kubernetes/hosts.yaml --become --become-user=root /home/vagrant/kubespray/cluster.yml' "${NODE_NAME}1"
 
 echo "Now copy /root/.kube/config to vagrant user"
 vagrant ssh -c 'mkdir -p /home/vagrant/.kube' "${NODE_NAME}1"
