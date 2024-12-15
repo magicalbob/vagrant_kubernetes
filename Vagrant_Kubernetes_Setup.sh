@@ -1,4 +1,4 @@
-8#!/usr/bin/env bash
+68#!/usr/bin/env bash
 
 # Copy insecure key into place
 cp ~/.vagrant.d/insecure_private_key ./insecure_private_key
@@ -218,7 +218,7 @@ echo "Install helm"
 vagrant ssh -c 'sudo snap install helm --classic' "${NODE_NAME}1"
 
 echo "Install Metrics Server"
-vagrant ssh -c 'kubectl apply -f https://dev.ellisbs.co.uk/files/components.yaml' '${NODE_NAME}1"
+vagrant ssh -c 'kubectl apply -f https://dev.ellisbs.co.uk/files/components.yaml' "${NODE_NAME}1"
 
 if [ ! -z "$OPENAI_API_KEY" ]
 then
