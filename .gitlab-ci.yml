@@ -7,18 +7,19 @@ stages:
  - destroy_job
  - up_only_job
  - skip_up_job
+ - validate_cluster
 
 destroy_job:
-  stage: destroy_job
   image: docker.ellisbs.co.uk:5190/ubuntu:24.04
+  stage: destroy_job
   tags:
     - linux
   script:
     - sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET 'cd Documents/src/test && vagrant destroy -f'
 
 up_only_job:
-  stage: up_only_job
   image: docker.ellisbs.co.uk:5190/ubuntu:24.04
+  stage: up_only_job
   tags:
     - linux
   timeout: 3h
@@ -29,8 +30,8 @@ up_only_job:
     - sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET 'cd Documents/src/test && ./Vagrant_Kubernetes_Setup.sh UP_ONLY'
 
 skip_up_job:
-  stage: skip_up_job
   image: docker.ellisbs.co.uk:5190/ubuntu:24.04
+  stage: skip_up_job
   tags:
     - linux
   timeout: 3h
@@ -40,3 +41,24 @@ skip_up_job:
     - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T build_inventory.template $TEST_TARGET:Documents/src/test/build_inventory.template
     - echo "sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET \"export OPENAI_API_KEY=$OPENAI_API_KEY && cd Documents/src/test && ./Vagrant_Kubernetes_Setup.sh SKIP_UP\"" > /tmp/dynamics_action.sh
     - sh /tmp/dynamics_action.sh
+
+validate_cluster:
+  image: docker.ellisbs.co.uk:5190/ubuntu:24.04
+  stage: validate_cluster
+  tags:
+    - linux
+  timeout: 1h
+  script:
+    # Copy validation script to the target machine
+    - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T validate_cluster.rb $TEST_TARGET:Documents/src/test/validate_cluster.rb
+    # Execute the validation script using ruby
+    - sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET 'cd Documents/src/test && vagrant ssh -c "ruby /vagrant/validate_cluster.rb|tee /vagrant/validate_cluster.log" node1'
+    # Copy validation log back from the target machine to runner
+    - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET:Documents/src/test/validate_cluster.log validate_cluster.log
+    # Check log for fail
+    - if grep "Kubernetes cluster validation passed successfully!" validate_cluster.log ; then echo "Kubernetes cluster validation passed successfully!"; else echo "Kubernetes cluster validation failed!"; exit 1; fi
+  artifacts:
+    paths:
+      - validate_cluster.log
+  dependencies:
+    - up_only_job
