@@ -63,7 +63,7 @@ else
     echo "Do an intial ssh to each node from node1"
     cp hosts.template hosts
     for i in $(seq 1 $TOTAL_NODES); do
-      echo ${PUB_NET}.21${i} node${i} >> hosts
+      echo ${PUB_NET}.22${i} node${i} >> hosts
     done
     echo Copy hosts file to each node
     for i in $(seq 1 $TOTAL_NODES); do
@@ -88,7 +88,7 @@ else
 
     echo Do an intial ssh to each node from node1 
     for i in $(seq 1 $TOTAL_NODES); do
-      vagrant ssh -c "echo uptime|ssh -o StrictHostKeyChecking=no ${PUB_NET}.21${i}" node1
+      vagrant ssh -c "echo uptime|ssh -o StrictHostKeyChecking=no ${PUB_NET}.22${i}" node1
     done
 
     echo "Script `basename $0` has finished"
@@ -103,9 +103,9 @@ HOSTS_YAML="all:
 for i in $(seq 1 $TOTAL_NODES); do
   HOSTS_YAML+="
     node$i:
-      ansible_host: ${PUB_NET}.21$i
-      ip: ${PUB_NET}.21$i
-      access_ip: ${PUB_NET}.21$i"
+      ansible_host: ${PUB_NET}.22$i
+      ip: ${PUB_NET}.22$i
+      access_ip: ${PUB_NET}.22$i"
 done
 
 HOSTS_YAML+="

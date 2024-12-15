@@ -19,7 +19,7 @@ Vagrant.configure("2") do |config|
   # Create ${TOTAL_NODES} VMs with a private network and sequential IP addresses
   (1..${TOTAL_NODES}).each do |i|
     config.vm.define "node#{i}" do |node|
-      node.vm.network "private_network", ip: "${PUB_NET}.21#{i}"
+      node.vm.network "private_network", ip: "${PUB_NET}.22#{i}"
     end
   end
 
