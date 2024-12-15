@@ -59,6 +59,17 @@ else
       vagrant ssh -c 'sudo apt-get install -y net-tools' node$i
     done
 
+    echo "Write /etc/hosts file"
+    echo "Do an intial ssh to each node from node1"
+    cp hosts.template hosts
+    for i in $(seq 1 $TOTAL_NODES); do
+      echo ${PUB_NET}.21${i} node${i} >> hosts
+    done
+    echo Copy hosts file to each node
+    for i in $(seq 1 $TOTAL_NODES); do
+      vagrant ssh -c "sudo cp /vagrant/hosts /etc/hosts" node${i}
+    done
+
     echo "Script `basename $0` has finished"
     exit 0
   fi
@@ -115,7 +126,7 @@ HOSTS_YAML+="
     calico_rr:
       hosts: {}"
 
-echo Write the hosts.yaml content to the file
+echo "Write the hosts.yaml content to the file"
 echo "$HOSTS_YAML" > hosts.yaml
 
 echo Set up ssh between the nodes
@@ -169,17 +180,6 @@ echo "Python requirements"
 vagrant ssh -c 'sudo apt-get update && sudo DEBIAN_FRONTEND=noninteractive apt-get -y install python3.10-venv' node1
 vagrant ssh -c 'python3 -m venv /home/vagrant/.py3kubespray'  node1
 vagrant ssh -c '. /home/vagrant/.py3kubespray/bin/activate && pip install -r /home/vagrant/kubespray/requirements.txt'  node1
-
-echo Write /etc/hosts file
-echo Do an intial ssh to each node from node1
-cp hosts.template hosts
-for i in $(seq 1 $TOTAL_NODES); do
-  echo ${PUB_NET}.21${i} node${i} >> hosts
-done
-echo Copy hosts file to each node
-for i in $(seq 1 $TOTAL_NODES); do
-  vagrant ssh -c "sudo cp /vagrant/hosts /etc/hosts" node${i}
-done
 
 echo Set up the cluster
 vagrant ssh -c 'cp -rfp /home/vagrant/kubespray/inventory/sample /home/vagrant/kubespray/inventory/vagrant_kubernetes' node1
