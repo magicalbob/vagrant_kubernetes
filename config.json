@@ -4,5 +4,5 @@
   "worker_nodes": 1,
   "ram_size": 2048,
   "cpu_count" : 2,
-  "pub_net": "192.168.56"
+  "pub_net": "192.168.55"
 }
