@@ -1,4 +1,7 @@
-o!/usr/bin/env bash
+#!/usr/bin/env bash
+
+# Copy insecure key into place
+cp ~/.vagrant.d/insecure_private_key ./insecure_private_key
 
 # Check for other command line arguments
 if [[ "$1" == "SKIP_UP" ]]; then
@@ -72,10 +75,10 @@ else
     done
 
     echo Set up ssh between the nodes
-    vagrant upload ~/.vagrant.d/insecure_private_key /home/vagrant/.ssh/id_rsa $NODE_NAME1
+    vagrant upload ./insecure_private_key /home/vagrant/.ssh/id_rsa $NODE_NAME1
 
     echo Now create the public key from it
-    ssh-keygen -y -f ~/.vagrant.d/insecure_private_key > ./insecure_public_key
+    ssh-keygen -y -f ./insecure_private_key > ./insecure_public_key
 
     echo Copy the public key to each node
     for i in $(seq 1 $TOTAL_NODES); do
