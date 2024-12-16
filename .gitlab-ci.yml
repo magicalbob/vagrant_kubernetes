@@ -43,6 +43,11 @@ skip_up_job:
     - sh /tmp/dynamics_action.sh
 
 validate_cluster:
+  retry:
+    max: 2
+    when:
+      - script_failure
+      - api_failure
   image: docker.ellisbs.co.uk:5190/ubuntu:24.04
   stage: validate_cluster
   tags:
