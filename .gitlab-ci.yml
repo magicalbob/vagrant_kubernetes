@@ -49,7 +49,6 @@ validate_cluster:
     - linux
   timeout: 1h
   script:
-    - sudo apt-get install -y ruby jq
     # Copy validation script and config.json to the target machine
     - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T validate_cluster.rb config.json $TEST_TARGET:Documents/src/test/
     # Execute the validation script using ruby, reading node_name from config.json
