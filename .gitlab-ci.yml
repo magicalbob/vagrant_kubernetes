@@ -49,10 +49,16 @@ validate_cluster:
     - linux
   timeout: 1h
   script:
-    # Copy validation script to the target machine
-    - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T validate_cluster.rb $TEST_TARGET:Documents/src/test/validate_cluster.rb
-    # Execute the validation script using ruby
-    - sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET 'cd Documents/src/test && vagrant ssh -c "ruby /vagrant/validate_cluster.rb|tee /vagrant/validate_cluster.log" knode1'
+    - sudo apt-get install -y ruby jq
+    # Copy validation script and config.json to the target machine
+    - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T validate_cluster.rb config.json $TEST_TARGET:Documents/src/test/
+    # Execute the validation script using ruby, reading node_name from config.json
+    - |
+      sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET '
+        cd Documents/src/test && 
+        NODE_NAME=$(jq -r .node_name config.json)1 &&
+        vagrant ssh -c "ruby /vagrant/validate_cluster.rb|tee /vagrant/validate_cluster.log" $NODE_NAME
+      '
     # Copy validation log back from the target machine to runner
     - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET:Documents/src/test/validate_cluster.log validate_cluster.log
     # Check log for fail
