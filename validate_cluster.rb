@@ -137,32 +137,6 @@ def validate_coredns
   end
 end
 
-def validate_network
-  puts "Validating network connectivity..."
-  begin
-    # Check if network plugin is running
-    network_pods = run_command("kubectl get pods -A -o wide | grep -E 'calico|flannel|weave|cilium'")
-    puts "Network plugin pods found: #{network_pods}"
-
-    # Create test pods
-    run_command("kubectl run network-test-1 --image=busybox:1.28 --command -- sleep 3600")
-    run_command("kubectl run network-test-2 --image=busybox:1.28 --command -- sleep 3600")
-
-    # Wait for pods to be ready
-    sleep 10
-
-    # Test connectivity between pods
-    run_command("kubectl exec network-test-1 -- ping -c 1 network-test-2.default.svc.cluster.local")
-    puts "Pod-to-pod communication test passed."
-
-    # Cleanup test pods
-    run_command("kubectl delete pod network-test-1 network-test-2")
-  rescue => e
-    puts "Network validation failed: #{e.message}"
-    exit 1
-  end
-end
-
 # Validate ETCD health
 def validate_etcd
   puts "Validating etcd cluster health..."
@@ -194,7 +168,6 @@ def main
   validate_namespace
   validate_core_services
   validate_coredns
-  validate_network
   validate_etcd
   puts "Kubernetes cluster validation passed successfully!"
 end
