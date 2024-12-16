@@ -137,44 +137,24 @@ def validate_coredns
   end
 end
 
-# Validate network connectivity
 def validate_network
   puts "Validating network connectivity..."
   begin
     # Check if network plugin is running
     network_pods = run_command("kubectl get pods -A -o wide | grep -E 'calico|flannel|weave|cilium'")
     puts "Network plugin pods found: #{network_pods}"
-    
-    # Test pod-to-pod communication
-    test_pods_yaml = <<~YAML
-      apiVersion: v1
-      kind: Pod
-      metadata:
-        name: network-test-1
-      spec:
-        containers:
-        - name: network-test
-          image: busybox:1.28
-          command: ['sleep', '3600']
-      ---
-      apiVersion: v1
-      kind: Pod
-      metadata:
-        name: network-test-2
-      spec:
-        containers:
-        - name: network-test
-          image: busybox:1.28
-          command: ['sleep', '3600']
-    YAML
-    
-    run_command("echo '#{test_pods_yaml}' | kubectl apply -f -")
-    sleep 10  # Wait for pods to start
-    
+
+    # Create test pods
+    run_command("kubectl run network-test-1 --image=busybox:1.28 --command -- sleep 3600")
+    run_command("kubectl run network-test-2 --image=busybox:1.28 --command -- sleep 3600")
+
+    # Wait for pods to be ready
+    sleep 10
+
     # Test connectivity between pods
-    run_command("kubectl exec network-test-1 -- ping -c 1 network-test-2")
+    run_command("kubectl exec network-test-1 -- ping -c 1 network-test-2.default.svc.cluster.local")
     puts "Pod-to-pod communication test passed."
-    
+
     # Cleanup test pods
     run_command("kubectl delete pod network-test-1 network-test-2")
   rescue => e
