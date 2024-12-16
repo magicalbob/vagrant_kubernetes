@@ -1,4 +1,4 @@
-68#!/usr/bin/env bash
+#!/usr/bin/env bash
 
 # Copy insecure key into place
 cp ~/.vagrant.d/insecure_private_key ./insecure_private_key
