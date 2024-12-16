@@ -64,7 +64,7 @@ else
     for i in $(seq 1 $TOTAL_NODES); do
       vagrant ssh -c 'sudo apt-get update' ${NODE_NAME}$i
       vagrant ssh -c 'sudo apt-get upgrade -y' ${NODE_NAME}$i
-      vagrant ssh -c 'sudo apt-get install -y net-tools' ${NODE_NAME}$i
+      vagrant ssh -c 'sudo apt-get install -y net-tools ruby jq' ${NODE_NAME}$i
     done
 
     echo "Write /etc/hosts file"
