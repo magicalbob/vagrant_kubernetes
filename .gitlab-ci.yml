@@ -1,4 +1,4 @@
-before_script:
+7before_script:
   - sudo mkdir -p ~/.ssh
   - echo "$THE_WAY" | base64 --decode | sudo tee ~/.ssh/the_way > /dev/null
   - sudo chmod 600 ~/.ssh/the_way
@@ -55,7 +55,7 @@ validate_cluster:
   timeout: 1h
   script:
     # output config.json to log for ref
-    cat config.json
+    - cat config.json
     # Copy validation script and config.json to the target machine
     - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T validate_cluster.rb config.json $TEST_TARGET:Documents/src/test/
     # Execute the validation script using ruby, reading node_name from config.json
