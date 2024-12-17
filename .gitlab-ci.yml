@@ -1,4 +1,4 @@
-7before_script:
+before_script:
   - sudo mkdir -p ~/.ssh
   - echo "$THE_WAY" | base64 --decode | sudo tee ~/.ssh/the_way > /dev/null
   - sudo chmod 600 ~/.ssh/the_way
