@@ -8,6 +8,7 @@ stages:
  - up_only_job
  - skip_up_job
  - validate_cluster
+ - restore_cluster
 
 destroy_job:
   image: docker.ellisbs.co.uk:5190/ubuntu:24.04
@@ -74,3 +75,17 @@ validate_cluster:
       - validate_cluster.log
   dependencies:
     - up_only_job
+
+restore_cluster:
+  image: docker.ellisbs.co.uk:5190/ubuntu:24.04
+  stage: restore_cluster
+  tags:
+    - linux
+  timeout: 1h
+  script:
+    # Copy the backup restore script to the target
+    - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T Backup_Restore.sh $TEST_TARGET:Documents/src/test/
+    # Execute backup restoe script
+    - sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET 'cd /vagrant && ./Backup_Restore.sh'
+  dependencies:
+    - validate_cluster
