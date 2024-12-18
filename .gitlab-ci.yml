@@ -90,6 +90,6 @@ restore_cluster:
     # Get name of first node
     - export NODE_NAME="$(jq -r '.node_name' config.json)1"
     # Execute backup restore script
-    - sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET "cd Documents/src/test/ && vagrant ssh -c 'cd /vagrant && ./Backup_Restore.sh' $NODE_NAME"
+    - sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET "cd Documents/src/test/ && chmod +x Backup_Restore.sh && vagrant ssh -c 'cd /vagrant && ./Backup_Restore.sh' $NODE_NAME"
   dependencies:
     - validate_cluster
