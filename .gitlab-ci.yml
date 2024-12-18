@@ -86,6 +86,6 @@ restore_cluster:
     # Copy the backup restore script to the target
     - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T Backup_Restore.sh $TEST_TARGET:Documents/src/test/
     # Execute backup restoe script
-    - sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET 'cd /vagrant && ./Backup_Restore.sh'
+    - sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET "vagrant ssh -c 'cd /vagrant && ./Backup_Restore.sh'"
   dependencies:
     - validate_cluster
