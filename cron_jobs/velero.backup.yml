@@ -1,26 +1,60 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: velero
+  name: velero-backup-role
+rules:
+  - apiGroups: ["velero.io"]
+    resources: ["backups"]
+    verbs: ["create", "get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: velero-backup-binding
+  namespace: velero
+subjects:
+  - kind: ServiceAccount
+    name: velero
+    namespace: default
+roleRef:
+  kind: Role
+  name: velero-backup-role
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: velero
+  namespace: default
+---
 apiVersion: batch/v1
 kind: CronJob
 metadata:
   name: velero-backup
   namespace: default
 spec:
-  schedule: "0 2 * * *" # Run at 2:00 AM daily
+  schedule: "0 2 * * *"  # Run daily at 2:00 AM
   jobTemplate:
     spec:
       template:
         spec:
           containers:
           - name: velero-backup
-            image: velero/velero:v1.12.0
-            args:
-            - backup
-            - create
-            - "$(BACKUP_NAME)"
-            - --include-cluster-resources=true
+            image: docker.ellisbs.co.uk:5190/velero:2024.12.20.13.17
+            command:
+            - /bin/sh
+            - -c
+            - >
+              BACKUP_NAME=$(date +%Y-%m-%d-%H-%M-%S).backup &&
+              /usr/local/bin/velero backup create $BACKUP_NAME --include-cluster-resources=true;
             env:
-            - name: BACKUP_NAME
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.creationTimestamp
+            - name: AWS_ENDPOINT_URL
+              value: http://192.168.0.14:4566
+            - name: AWS_SHARED_CREDENTIALS_FILE
+              value: /root/.aws/credentials
+            - name: AWS_CONFIG_FILE
+              value: /root/.aws/config
           restartPolicy: OnFailure
-          serviceAccountName: velero
+          serviceAccountName: velero  # Ensure this service account has Velero permissions
