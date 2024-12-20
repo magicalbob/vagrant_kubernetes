@@ -1,0 +1,21 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: velero-backup
+  namespace: default
+spec:
+  schedule: "0 2 * * *" # Run at 2:00 AM daily
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: velero-backup
+            image: velero/velero:v1.12.0 # Use the Velero image
+            command:
+            - /bin/sh
+            - -c
+            - >
+              /velero backup create $(date +\%Y-\%m-\%d-\%H-\%M-\%S).backup --include-cluster-resources=true;
+          restartPolicy: OnFailure
+          serviceAccountName: velero # Ensure this service account has Velero permissions

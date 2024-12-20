@@ -1,0 +1,18 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: velero-cleanup
+  namespace: default
+spec:
+  schedule: "0 3 * * *" # Run at 3:00 AM daily
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: velero-cleanup
+            image: docker.ellisbs.co.uk:5190/clean_backup:latest
+            args:
+            - --retain-count
+            - "2" # Retain only the two most recent backups
+          restartPolicy: OnFailure
