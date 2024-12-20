@@ -11,7 +11,7 @@ spec:
         spec:
           containers:
           - name: velero-cleanup
-            image: docker.ellisbs.co.uk:5190/clean_backup:latest
+            image: docker.ellisbs.co.uk:5190/clean_backup:2024.12.20.12.48
             args:
             - --retain-count
             - "2" # Retain only the two most recent backups
