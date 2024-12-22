@@ -43,8 +43,6 @@ fi
 
 # Common configuration
 cp ~/.vagrant.d/insecure_private_key ./insecure_private_key
-curl -o alert_functions.sh https://gitlab.ellisbs.co.uk/-/snippets/1/raw
-source alert_functions.sh
 
 echo "Read configuration from config.json"
 CONTROL_NODES=$(jq -r '.control_nodes' config.json)
@@ -57,6 +55,8 @@ KUBE_VERSION=$(jq -r '.kube_version' config.json)
 KUBESPRAY_VERSION=$(jq -r '.kubespray_version' config.json)
 NODE_NAME=$(jq -r '.node_name' config.json)
 KUBE_NETWORK_PLUGIN=$(jq -r '.kube_network_plugin // "calico"' config.json)
+# Export variables
+export CONTROL_NODE WORKER_NODES TOTAL_NODES RAM_SIZE CPU_COUNT PUB_NET KUBE_VERSION KUBESPRAY_VERSION NODE_NAME KUBE_NETWORK_PLUGIN
 
 if [[ "$LOCATION" == "vagrant" ]]; then
     echo "Create Vagrantfile from template"
