@@ -41,6 +41,7 @@ export PUB_NET=$(jq -r '.pub_net' config.json)
 export KUBE_VERSION=$(jq -r '.kube_version' config.json)
 export KUBESPRAY_VERSION=$(jq -r '.kubespray_version' config.json)
 export NODE_NAME=$(jq -r '.node_name' config.json)
+export KUBE_NETWORK_PLUGIN=$(jq -r '.kube_network_plugin // "calico"' config.json)
 
 echo "Create Vagrantfile from template"
 envsubst < Vagrantfile.template > Vagrantfile
@@ -191,7 +192,11 @@ vagrant ssh -c '. /home/vagrant/.py3kubespray/bin/activate && pip install -r /ho
 
 echo "Set up the cluster"
 vagrant ssh -c 'cp -rfp /home/vagrant/kubespray/inventory/sample /home/vagrant/kubespray/inventory/vagrant_kubernetes' "${NODE_NAME}1"
-vagrant ssh -c "sed -i -E \"/^kube_version:/s/.*/kube_version: $KUBE_VERSION/\"  /home/vagrant/kubespray/inventory/vagrant_kubernetes/group_vars/k8s_cluster/k8s-cluster.yml" "${NODE_NAME}1"
+# Update kube_version in k8s-cluster.yml
+vagrant ssh -c "sed -i -E \"/^kube_version:/s/.*/kube_version: '$KUBE_VERSION'/\" kubespray/inventory/vagrant_kubernetes/group_vars/k8s_cluster/k8s-cluster.yml" ${NODE_NAME}1
+# Update kube_network_plugin in k8s-cluster.yml
+vagrant ssh -c"sed -i -E \"/^kube_network_plugin:/s/.*/kube_network_plugin: '$KUBE_NETWORK_PLUGIN'/\" kubespray/inventory/physical_kubernetes/group_vars/k8s_cluster/k8s-cluster.yml" ${NODE_NAME}1
+# Copy hosts.yaml into kubespray inventory
 vagrant ssh -c 'cp /vagrant/hosts.yaml /home/vagrant/kubespray/inventory/vagrant_kubernetes/hosts.yaml' "${NODE_NAME}1"
 envsubst < build_inventory.template | sed 's/PUBLIC_NET.i/$PUBLIC_NET.$i/' > build_inventory.sh
 chmod +x build_inventory.sh
