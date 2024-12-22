@@ -44,15 +44,6 @@ fi
 # Common configuration
 cp ~/.vagrant.d/insecure_private_key ./insecure_private_key
 echo Work out primary network adapter for Mac or linux
-if [[ $(uname) == "Darwin" ]]; then
-  # For macOS
-  PRIMARY_ADAPTER=$(route get default | grep interface | awk '{print $2}')
-elif [[ $(uname) == "Linux" ]]; then
-  # For Linux
-  PRIMARY_ADAPTER=$(ip route get 1 | awk '{print $5; exit}')
-fi
-echo "Primary Adapter: ${PRIMARY_ADAPTER}"
-export PRIMARY_ADAPTER
 
 echo "Read configuration from config.json"
 CONTROL_NODES=$(jq -r '.control_nodes' config.json)
@@ -69,6 +60,15 @@ KUBE_NETWORK_PLUGIN=$(jq -r '.kube_network_plugin // "calico"' config.json)
 export CONTROL_NODE WORKER_NODES TOTAL_NODES RAM_SIZE CPU_COUNT PUB_NET KUBE_VERSION KUBESPRAY_VERSION NODE_NAME KUBE_NETWORK_PLUGIN
 
 if [[ "$LOCATION" == "vagrant" ]]; then
+    if [[ $(uname) == "Darwin" ]]; then
+      # For macOS
+      PRIMARY_ADAPTER=$(route get default | grep interface | awk '{print $2}')
+    elif [[ $(uname) == "Linux" ]]; then
+      # For Linux
+      PRIMARY_ADAPTER=$(ip route get 1 | awk '{print $5; exit}')
+    fi
+    echo "Primary Adapter: ${PRIMARY_ADAPTER}"
+    export PRIMARY_ADAPTER
     echo "Create Vagrantfile from template"
     envsubst < Vagrantfile.template > Vagrantfile
 
