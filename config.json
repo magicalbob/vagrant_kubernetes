@@ -1,10 +1,10 @@
 {
   "kube_version": "v1.31.3",
   "control_nodes": 1,
-  "worker_nodes": 3,
+  "worker_nodes": 1,
   "ram_size": 8196,
   "cpu_count" : 4,
   "pub_net": "192.168.56",
-  "node_name": "node",
+  "node_name": "machine",
   "kube_network_plugin": "cilium"
 }
