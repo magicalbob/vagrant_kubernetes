@@ -1,8 +1,7 @@
-export PUBLIC_NET=$PUB_NET
 declare -a IPS=()
-for ((i = 221; i <= 220 + $TOTAL_NODES; i++))
+for ((i = 1; i <= 1 + $TOTAL_NODES; i++))
 do
-  IPS+=("PUBLIC_NET.i")
+  IPS+=$(ping -c1 ${NODE_NAME}$i|head -1|cut -d\( -f2|cut -d\) -f1)
 done
 . /home/vagrant/.py3kubespray/bin/activate
 export CONFIG_FILE=/home/vagrant/kubespray/inventory/vagrant_kubernetes/hosts.yaml
