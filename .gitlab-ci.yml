@@ -25,7 +25,7 @@ up_only_job:
     - linux
   timeout: 3h
   script:
-    - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T Make_Kubernetes.sh $TEST_TARGET:Documents/src/test/Make_Kubernete.sh
+    - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T Make_Kubernetes.sh $TEST_TARGET:Documents/src/test/Make_Kubernetes.sh
     - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T config.json $TEST_TARGET:Documents/src/test/config.json
     - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T Vagrantfile.template $TEST_TARGET:Documents/src/test/Vagrantfile.template
     - sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET 'cd Documents/src/test && ./Vagrant_Kubernetes_Setup.sh --location vagrant UP_ONLY'
