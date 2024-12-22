@@ -25,10 +25,10 @@ up_only_job:
     - linux
   timeout: 3h
   script:
-    - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T Vagrant_Kubernetes_Setup.sh $TEST_TARGET:Documents/src/test/Vagrant_Kubernetes_Setup.sh
+    - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T Make_Kubernetes_Setup.sh $TEST_TARGET:Documents/src/test/Make_Kubernetes_Setup.sh
     - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T config.json $TEST_TARGET:Documents/src/test/config.json
     - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T Vagrantfile.template $TEST_TARGET:Documents/src/test/Vagrantfile.template
-    - sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET 'export ALERT_WEBHOOK_URL=$ALERT_WEBHOOK_URL && export ALERT_AUTH_KEY=$ALERT_AUTH_KEY && cd Documents/src/test && ./Vagrant_Kubernetes_Setup.sh UP_ONLY'
+    - sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET 'export ALERT_WEBHOOK_URL=$ALERT_WEBHOOK_URL && export ALERT_AUTH_KEY=$ALERT_AUTH_KEY && cd Documents/src/test && ./Vagrant_Kubernetes_Setup.sh --location vagrant UP_ONLY'
 
 skip_up_job:
   image: docker.ellisbs.co.uk:5190/ubuntu:24.04
@@ -40,7 +40,7 @@ skip_up_job:
     - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T hosts.template $TEST_TARGET:Documents/src/test/hosts.template
     - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T addons.yml $TEST_TARGET:Documents/src/test/addons.yml
     - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T build_inventory.template $TEST_TARGET:Documents/src/test/build_inventory.template
-    - echo "sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET \"export OPENAI_API_KEY=$OPENAI_API_KEY && cd Documents/src/test && ./Vagrant_Kubernetes_Setup.sh SKIP_UP\"" > /tmp/dynamics_action.sh
+    - echo "sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET \"export OPENAI_API_KEY=$OPENAI_API_KEY && cd Documents/src/test && ./Make_Kubernetes_Setup.sh --location vagrant SKIP_UP\"" > /tmp/dynamics_action.sh
     - sh /tmp/dynamics_action.sh
 
 validate_cluster:
