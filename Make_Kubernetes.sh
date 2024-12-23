@@ -254,6 +254,8 @@ done
 # Run Ansible playbook
 echo "Run Ansible playbook to install Kubernetes"
 run_on_node "${NODE_NAME}1" "
+    sudo apt-get update && sudo apt-get install -y python3 python3-venv &&
+    python3 -m venv /home/vagrant/.py3kubespray &&
     . ./.py3kubespray/bin/activate &&
     cd kubespray &&
     ansible-playbook -vi ./inventory/${INVENTORY_PATH}/hosts.yaml --become --become-user=root cluster.yml"
