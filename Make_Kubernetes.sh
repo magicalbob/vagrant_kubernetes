@@ -264,13 +264,23 @@ fi
 
 # Common steps for both setups
 echo "Set up the cluster"
-ssh "${NODE_NAME}1" '
-    cp -rfp /home/vagrant/kubespray/inventory/sample /home/vagrant/kubespray/inventory/vagrant_kubernetes &&
-    cp tmp/hosts.yaml /home/vagrant/kubespray/inventory/vagrant_kubernetes/hosts.yaml &&
-
-    sed -i -E "/^kube_version:/s/.*/kube_version: '$KUBE_VERSION'/" /home/vagrant/kubespray/inventory/vagrant_kubernetes/group_vars/k8s_cluster/k8s-cluster.yml &&
-    sed -i -E "/^kube_network_plugin:/s/.*/kube_network_plugin: '$KUBE_NETWORK_PLUGIN'/" /home/vagrant/kubespray/inventory/vagrant_kubernetes/group_vars/k8s_cluster/k8s-cluster.yml
-'
+if [[ "$LOCATION" == "vagrant" ]]; then
+    ssh "${NODE_NAME}1" '
+        cp -rfp /home/vagrant/kubespray/inventory/sample /home/vagrant/kubespray/inventory/vagrant_kubernetes &&
+        cp tmp/hosts.yaml /home/vagrant/kubespray/inventory/vagrant_kubernetes/hosts.yaml &&
+    
+        sed -i -E "/^kube_version:/s/.*/kube_version: '$KUBE_VERSION'/" /home/vagrant/kubespray/inventory/vagrant_kubernetes/group_vars/k8s_cluster/k8s-cluster.yml &&
+        sed -i -E "/^kube_network_plugin:/s/.*/kube_network_plugin: '$KUBE_NETWORK_PLUGIN'/" /home/vagrant/kubespray/inventory/vagrant_kubernetes/group_vars/k8s_cluster/k8s-cluster.yml
+    '
+else
+    vagrant ssh "${NODE_NAME}1" '
+        cp -rfp /home/vagrant/kubespray/inventory/sample /home/vagrant/kubespray/inventory/physical_kubernetes &&
+        cp tmp/hosts.yaml /home/vagrant/kubespray/inventory/physical_kubernetes/hosts.yaml &&
+    
+        sed -i -E "/^kube_version:/s/.*/kube_version: '$KUBE_VERSION'/" /home/vagrant/kubespray/inventory/physical_kubernetes/group_vars/k8s_cluster/k8s-cluster.yml &&
+        sed -i -E "/^kube_network_plugin:/s/.*/kube_network_plugin: '$KUBE_NETWORK_PLUGIN'/" /home/vagrant/kubespray/inventory/physical_kubernetes/group_vars/k8s_cluster/k8s-cluster.yml
+    '
+fi
 
 echo "Disable firewalls, enable IPv4 forwarding, and switch off swap on all nodes"
 for i in $(seq 1 $TOTAL_NODES); do
@@ -291,18 +301,34 @@ for i in $(seq 1 $TOTAL_NODES); do
 done
 
 echo "Run Ansible playbook to install Kubernetes"
-ssh "${NODE_NAME}1" '
-    . ./.py3kubespray/bin/activate &&
-    cd kubespray &&
-    ansible-playbook -vi ./inventory/vagrant_kubernetes/hosts.yaml --become --become-user=root cluster.yml
-'
+if [[ "$LOCATION" == "vagrant" ]]; then
+    vagrant ssh "${NODE_NAME}1" '
+        . ./.py3kubespray/bin/activate &&
+        cd kubespray &&
+        ansible-playbook -vi ./inventory/vagrant_kubernetes/hosts.yaml --become --become-user=root cluster.yml
+    '
+else
+    ssh "${NODE_NAME}1" '
+        . ./.py3kubespray/bin/activate &&
+        cd kubespray &&
+        ansible-playbook -vi ./inventory/physical_kubernetes/hosts.yaml --become --become-user=root cluster.yml
+    '
+fi
 
 echo "Copy Kubernetes configuration to the user"
-ssh "${NODE_NAME}1" '
-    mkdir -p ./.kube &&
-    sudo cp /etc/kubernetes/admin.conf ./.kube/config &&
-    sudo chown $(id -u):$(id -g) ./.kube/config
-'
+if [[ "$LOCATION" == "vagrant" ]]; then
+    vagrant ssh "${NODE_NAME}1" '
+        mkdir -p ./.kube &&
+        sudo cp /etc/kubernetes/admin.conf ./.kube/config &&
+        sudo chown $(id -u):$(id -g) ./.kube/config
+    '
+else
+    ssh "${NODE_NAME}1" '
+        mkdir -p ./.kube &&
+        sudo cp /etc/kubernetes/admin.conf ./.kube/config &&
+        sudo chown $(id -u):$(id -g) ./.kube/config
+    '
+fi
 
 echo "Install Helm on the primary node"
 if [[ "$LOCATION" == "vagrant" ]]; then
@@ -320,11 +346,19 @@ fi
 
 if [ ! -z "$OPENAI_API_KEY" ]; then
     echo "Install k8sgpt"
-    ssh "${NODE_NAME}1" "
-        curl -Lo /tmp/k8sgpt.deb https://github.com/k8sgpt-ai/k8sgpt/releases/download/v0.3.24/k8sgpt_$(uname -m | sed 's/x86_64/amd64/').deb &&
-        sudo dpkg -i /tmp/k8sgpt.deb &&
-        k8sgpt auth add --backend openai --model gpt-3.5-turbo --password $OPENAI_API_KEY
-    "
+    if [[ "$LOCATION" == "vagrant" ]]; then
+        vagrant ssh "${NODE_NAME}1" "
+            curl -Lo /tmp/k8sgpt.deb https://github.com/k8sgpt-ai/k8sgpt/releases/download/v0.3.24/k8sgpt_$(uname -m | sed 's/x86_64/amd64/').deb &&
+            sudo dpkg -i /tmp/k8sgpt.deb &&
+            k8sgpt auth add --backend openai --model gpt-3.5-turbo --password $OPENAI_API_KEY
+        "
+    else
+        ssh "${NODE_NAME}1" "
+            curl -Lo /tmp/k8sgpt.deb https://github.com/k8sgpt-ai/k8sgpt/releases/download/v0.3.24/k8sgpt_$(uname -m | sed 's/x86_64/amd64/').deb &&
+            sudo dpkg -i /tmp/k8sgpt.deb &&
+            k8sgpt auth add --backend openai --model gpt-3.5-turbo --password $OPENAI_API_KEY
+        "
+    fi
 fi
 
 echo "Script $(basename "$0") has finished"
