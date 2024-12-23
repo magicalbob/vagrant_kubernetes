@@ -66,7 +66,6 @@ copy_to_node() {
 
 # Common configuration
 cp ~/.vagrant.d/insecure_private_key ./insecure_private_key
-echo "Work out primary network adapter for Mac or linux"
 
 echo "Read configuration from config.json"
 CONTROL_NODES=$(jq -r '.control_nodes' config.json)
@@ -86,6 +85,7 @@ export CONTROL_NODES WORKER_NODES TOTAL_NODES RAM_SIZE CPU_COUNT PUB_NET KUBE_VE
 
 # Vagrant-specific setup
 if [[ "$LOCATION" == "vagrant" ]]; then
+    echo "Work out primary network adapter for Mac or linux"
     if [[ $(uname) == "Darwin" ]]; then
         PRIMARY_ADAPTER=$(route get default | grep interface | awk '{print $2}')
     elif [[ $(uname) == "Linux" ]]; then
