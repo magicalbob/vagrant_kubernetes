@@ -204,6 +204,7 @@ generate_hosts_yaml() {
 }
 
 echo "$(generate_hosts_yaml)" > hosts.yaml
+copy_to_node hosts.yaml hosts.yaml "${NODE_NAME}1"
 
 # Clone kubespray repository
 echo "Clone the kubespray repository"
@@ -233,7 +234,7 @@ INVENTORY_PATH="${LOCATION}_kubernetes"
 echo "Set up the cluster"
 run_on_node "${NODE_NAME}1" "
     cp -rfp /home/vagrant/kubespray/inventory/sample /home/vagrant/kubespray/inventory/${INVENTORY_PATH} &&
-    cp tmp/hosts.yaml /home/vagrant/kubespray/inventory/${INVENTORY_PATH}/hosts.yaml &&
+    cp ,/hosts.yaml ./kubespray/inventory/${INVENTORY_PATH}/hosts.yaml &&
     sed -i -E \"/^kube_version:/s/.*/kube_version: '$KUBE_VERSION'/\" /home/vagrant/kubespray/inventory/${INVENTORY_PATH}/group_vars/k8s_cluster/k8s-cluster.yml &&
     sed -i -E \"/^kube_network_plugin:/s/.*/kube_network_plugin: '$KUBE_NETWORK_PLUGIN'/\" /home/vagrant/kubespray/inventory/${INVENTORY_PATH}/group_vars/k8s_cluster/k8s-cluster.yml"
 
