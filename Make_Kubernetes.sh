@@ -259,7 +259,7 @@ run_on_node "${NODE_NAME}1" "
     . ./.py3kubespray/bin/activate &&
     cd kubespray &&
     pip install -r requirements.txt &&
-    ansible-playbook -vi ./inventory/${INVENTORY_PATH}/hosts.yaml --become --become-user=root cluster.yml"
+    ansible-playbook -i ./inventory/${INVENTORY_PATH}/hosts.yaml --become --become-user=root cluster.yml"
 
 # Setup Kubernetes config
 echo "Copy Kubernetes configuration to the user"
