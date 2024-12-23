@@ -258,6 +258,7 @@ run_on_node "${NODE_NAME}1" "
     python3 -m venv /home/vagrant/.py3kubespray &&
     . ./.py3kubespray/bin/activate &&
     cd kubespray &&
+    pip install -r requirements.txt &&
     ansible-playbook -vi ./inventory/${INVENTORY_PATH}/hosts.yaml --become --become-user=root cluster.yml"
 
 # Setup Kubernetes config
