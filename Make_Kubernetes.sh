@@ -217,7 +217,7 @@ CLONE_CMD='
             git clone https://github.com/kubernetes-sigs/kubespray.git /home/vagrant/kubespray && break
         else
             echo "Directory exists and is not empty. Removing contents..."
-            rm -rf ./kubespray/*
+            rm -rf ./kubespray
         fi
         ATTEMPT=$((ATTEMPT+1))
         [ $ATTEMPT -le $MAX_ATTEMPTS ] && echo "Retrying in 5 seconds..." && sleep 5
