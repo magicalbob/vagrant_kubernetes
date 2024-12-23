@@ -6,5 +6,6 @@
   "cpu_count" : 4,
   "pub_net": "192.168.56",
   "node_name": "machine",
-  "kube_network_plugin": "cilium"
+  "kube_network_plugin": "cilium",
+  "box_name": "bento/ubuntu-22.04"
 }
