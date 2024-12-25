@@ -58,6 +58,7 @@ The cluster settings are defined in config.json. This file specifies:
 - **node_name**: Name prefix of the nodes. Will be set and used by vagrant, but just used for physical.
 - **kube_network_plugin**: "cilium" or `calicon`
 - **box_name**: "bento/ubuntu-22.04". Name of vagrant box when location is vagrant.
+- **disk_size**: Disk size of each node (default: 51200 [50G]).
 
 Example config.json
 ```
@@ -71,6 +72,7 @@ Example config.json
   "node_name": "machine",
   "kube_network_plugin": "cilium",
   "box_name": "bento/ubuntu-22.04"
+  "disk_size": "51200"
 }
 ```
 
