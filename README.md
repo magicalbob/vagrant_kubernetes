@@ -58,7 +58,7 @@ The cluster settings are defined in config.json. This file specifies:
 - **node_name**: Name prefix of the nodes. Will be set and used by vagrant, but just used for physical.
 - **kube_network_plugin**: "cilium" or `calicon`
 - **box_name**: "bento/ubuntu-22.04". Name of vagrant box when location is vagrant.
-- **disk_size**: Disk size of each node (default: 51200 [50G]).
+- **disk_size**: Disk size of each node (default: 100GB).
 
 Example config.json
 ```
@@ -72,12 +72,12 @@ Example config.json
   "node_name": "machine",
   "kube_network_plugin": "cilium",
   "box_name": "bento/ubuntu-22.04"
-  "disk_size": "51200"
+  "disk_size": "100GB"
 }
 ```
 
 ### Details
-The Vagrantfile is created from a Vagrantfile.template. It only includes base definitions of the boxes. Provisioning (like update, upgrades and installs of dependencies) is done by the `Make_Kubernetes.sh` script..
+The Vagrantfile is created from a Vagrantfile.template. It only includes base definitions of the boxes. Provisioning (like update, upgrades and installs of dependencies) is done by the `Make_Kubernetes.sh` script. vagrant plugin https://github.com/sprotheroe/vagrant-disksize is installed to hand disk size.
 It automatically selects an arm64 image if running on an arm64 platform (e.g., Apple Silicon Macs), or an x86 image otherwise.
 The `Make_Kubernetessh` script uses the Vagrant insecure private key (~/.vagrant.d/insecure_private_key) to allow SSH into all the nodes.
 Before executing Kubespray on the first node, the script ensures SSH access is set up from node1 to all other nodes.

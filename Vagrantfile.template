@@ -14,8 +14,10 @@ Vagrant.configure("2") do |config|
     vb.gui = false
     vb.memory = "${RAM_SIZE}"
     vb.cpus = ${CPU_COUNT}
-    vb.customize ["modifyvm", :id, "--resize-disk", 0, ${DISK_SIZE}]
   end
+
+  # Set disk size for each VM
+  config.disksize.size = "${DISK_SIZE}"
 
   # Create ${TOTAL_NODES} VMs with a private network and sequential IP addresses
   (1..${TOTAL_NODES}).each do |i|

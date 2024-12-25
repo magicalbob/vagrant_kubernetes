@@ -8,5 +8,5 @@
   "node_name": "machine",
   "kube_network_plugin": "cilium",
   "box_name": "bento/ubuntu-22.04",
-  "disk_size": "51200"
+  "disk_size": "100GB"
 }
