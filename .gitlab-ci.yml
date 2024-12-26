@@ -77,6 +77,11 @@ validate_cluster:
     - up_only_job
 
 restore_cluster:
+  retry:
+    max: 2
+    when:
+      - script_failure
+      - api_failure
   image: docker.ellisbs.co.uk:5190/ubuntu:24.04
   stage: restore_cluster
   tags:
