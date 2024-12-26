@@ -1,9 +1,12 @@
 {
-  "kube_version": "v1.30.5",
+  "kube_version": "v1.31.3",
   "control_nodes": 1,
   "worker_nodes": 1,
-  "ram_size": 2048,
-  "cpu_count" : 2,
+  "ram_size": 8196,
+  "cpu_count" : 4,
   "pub_net": "192.168.56",
-  "node_name": "knode"
+  "node_name": "machine",
+  "kube_network_plugin": "cilium",
+  "box_name": "bento/ubuntu-22.04",
+  "disk_size": "100GB"
 }

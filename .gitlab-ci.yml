@@ -8,6 +8,7 @@ stages:
  - up_only_job
  - skip_up_job
  - validate_cluster
+ - restore_cluster
 
 destroy_job:
   image: docker.ellisbs.co.uk:5190/ubuntu:24.04
@@ -24,10 +25,10 @@ up_only_job:
     - linux
   timeout: 3h
   script:
-    - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T Vagrant_Kubernetes_Setup.sh $TEST_TARGET:Documents/src/test/Vagrant_Kubernetes_Setup.sh
+    - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T Make_Kubernetes.sh $TEST_TARGET:Documents/src/test/Make_Kubernetes.sh
     - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T config.json $TEST_TARGET:Documents/src/test/config.json
     - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T Vagrantfile.template $TEST_TARGET:Documents/src/test/Vagrantfile.template
-    - sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET 'export ALERT_WEBHOOK_URL=$ALERT_WEBHOOK_URL && export ALERT_AUTH_KEY=$ALERT_AUTH_KEY && cd Documents/src/test && ./Vagrant_Kubernetes_Setup.sh UP_ONLY'
+    - sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET 'cd Documents/src/test && ./Make_Kubernetes.sh --location vagrant UP_ONLY'
 
 skip_up_job:
   image: docker.ellisbs.co.uk:5190/ubuntu:24.04
@@ -39,16 +40,23 @@ skip_up_job:
     - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T hosts.template $TEST_TARGET:Documents/src/test/hosts.template
     - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T addons.yml $TEST_TARGET:Documents/src/test/addons.yml
     - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T build_inventory.template $TEST_TARGET:Documents/src/test/build_inventory.template
-    - echo "sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET \"export OPENAI_API_KEY=$OPENAI_API_KEY && cd Documents/src/test && ./Vagrant_Kubernetes_Setup.sh SKIP_UP\"" > /tmp/dynamics_action.sh
+    - echo "sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET \"export OPENAI_API_KEY=$OPENAI_API_KEY && cd Documents/src/test && ./Make_Kubernetes.sh --location vagrant SKIP_UP\"" > /tmp/dynamics_action.sh
     - sh /tmp/dynamics_action.sh
 
 validate_cluster:
+  retry:
+    max: 2
+    when:
+      - script_failure
+      - api_failure
   image: docker.ellisbs.co.uk:5190/ubuntu:24.04
   stage: validate_cluster
   tags:
     - linux
   timeout: 1h
   script:
+    # output config.json to log for ref
+    - cat config.json
     # Copy validation script and config.json to the target machine
     - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T validate_cluster.rb config.json $TEST_TARGET:Documents/src/test/
     # Execute the validation script using ruby, reading node_name from config.json
@@ -67,3 +75,21 @@ validate_cluster:
       - validate_cluster.log
   dependencies:
     - up_only_job
+
+restore_cluster:
+  image: docker.ellisbs.co.uk:5190/ubuntu:24.04
+  stage: restore_cluster
+  tags:
+    - linux
+  timeout: 1h
+  script:
+    # Copy the backup restore script to the target
+    - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T Backup_Restore.sh config.json $TEST_TARGET:Documents/src/test/
+    # Temp install jq, should be in runner image build
+    - sudo apt-get update && sudo apt-get install -y jq
+    # Get name of first node
+    - export NODE_NAME="$(jq -r '.node_name' config.json)1"
+    # Execute backup restore script
+    - sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET "cd Documents/src/test/ && chmod +x Backup_Restore.sh && vagrant ssh -c 'cd /vagrant && ./Backup_Restore.sh' $NODE_NAME"
+  dependencies:
+    - validate_cluster

@@ -259,3 +259,5 @@ argocd_enabled: false
 # The plugin manager for kubectl
 krew_enabled: false
 krew_root_dir: "/usr/local/krew"
+
+coredns_enabled: true
