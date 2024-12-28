@@ -100,6 +100,8 @@ EXISTING_RESTORE=$(echo "$RESTORE_JSON" | jq -r --arg LATEST_BACKUP "$LATEST_BAC
 
 if [ -n "$EXISTING_RESTORE" ]; then
     echo "A restore for backup $LATEST_BACKUP already exists: $EXISTING_RESTORE. Skipping restore initiation."
+    echo "Restore $EXISTING_RESTORE already completed. Exiting."
+    exit 0
 else
     echo "Initiating a restore for backup: $LATEST_BACKUP"
     RESTORE_OUTPUT=$(velero restore create --from-backup "$LATEST_BACKUP" 2>&1)
