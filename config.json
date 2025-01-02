@@ -3,7 +3,7 @@
   "control_nodes": 1,
   "worker_nodes": 1,
   "ram_size": 8192,
-  "cpu_count" : 1,
+  "cpu_count" : 2,
   "pub_net": "192.168.56",
   "node_name": "machine",
   "kube_network_plugin": "cilium",
