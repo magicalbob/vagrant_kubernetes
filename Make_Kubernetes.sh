@@ -80,9 +80,10 @@ NODE_NAME=$(jq -r '.node_name' config.json)
 KUBE_NETWORK_PLUGIN=$(jq -r '.kube_network_plugin // "calico"' config.json)
 BOX_NAME=$(jq -r '.box_name // "bento/ubuntu-22.04"' config.json)
 DISK_SIZE=$(jq -r '.disk_size // "51200"' config.json)
+MAC_ADDRESS=$(jq -r '.mac_address // "08:00:aa:aa:aa:aa"' config.json)
 
 # Export variables
-export CONTROL_NODES WORKER_NODES TOTAL_NODES RAM_SIZE CPU_COUNT PUB_NET KUBE_VERSION KUBESPRAY_VERSION NODE_NAME KUBE_NETWORK_PLUGIN BOX_NAME DISK_SIZE
+export CONTROL_NODES WORKER_NODES TOTAL_NODES RAM_SIZE CPU_COUNT PUB_NET KUBE_VERSION KUBESPRAY_VERSION NODE_NAME KUBE_NETWORK_PLUGIN BOX_NAME DISK_SIZE MAC_ADDRESS
 
 # Vagrant-specific setup
 if [[ "$LOCATION" == "vagrant" ]]; then
