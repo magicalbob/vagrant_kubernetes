@@ -291,9 +291,11 @@ fi
 
 # Setup service monitor
 echo "Setup service monitor service"
-copy_to_node service-monitor.service /etc/systemd/system/service-monitor.service "${NODE_NAME}1"
-copy_to_node service-monitor.sh /bin/service-monitor.sh "${NODE_NAME}1"
+copy_to_node service-monitor.service service-monitor.service "${NODE_NAME}1"
+copy_to_node service-monitor.sh service-monitor.sh "${NODE_NAME}1"
 run_on_node "${NODE_NAME}1" '
+    sudo mv service-monitor.service /etc/systemd/system/service-monitor.service &&
+    sudo mv service-monitor.sh /bin/service-monitor.sh &&
     sudo chmod +x /bin/service-monitor.sh &&
     sudo systemctl daemon-reload &&
     sudo systemctl enable service-monitor.service'
