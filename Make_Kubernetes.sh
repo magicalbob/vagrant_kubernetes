@@ -298,6 +298,7 @@ run_on_node "${NODE_NAME}1" '
     sudo mv service-monitor.sh /bin/service-monitor.sh &&
     sudo chmod +x /bin/service-monitor.sh &&
     sudo systemctl daemon-reload &&
-    sudo systemctl enable service-monitor.service'
+    sudo systemctl enable service-monitor.service
+    sudo systemctl start service-monitor.service'
 
 echo "Script $(basename "$0") has finished"
