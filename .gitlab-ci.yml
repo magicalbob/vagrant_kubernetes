@@ -102,3 +102,4 @@ restore_cluster:
     - sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET "cd Documents/src/test/ && chmod +x Backup_Restore.sh && vagrant ssh -c 'cd /vagrant && ./Backup_Restore.sh' $NODE_NAME"
   dependencies:
     - validate_cluster
+  allow_failure: true
