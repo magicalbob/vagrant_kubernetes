@@ -115,7 +115,16 @@ if [[ "$LOCATION" == "vagrant" ]]; then
 
         echo "Update and upgrade each node"
         for i in $(seq 1 $TOTAL_NODES); do
-            for cmd in 'sudo pvresize /dev/sda3' 'sudo lvextend -l +100%FREE /dev/ubuntu-vg/ubuntu-lv' 'sudo resize2fs /dev/ubuntu-vg/ubuntu-lv' 'sudo apt-get update' 'sudo apt-get upgrade -y' 'sudo apt-get install -y net-tools ruby jq chrony' 'sudo systemctl enable chrony --now' 'sudo chronyc -a makestep'; do
+            for cmd in \
+                'sudo pvresize /dev/sda3' \
+                'sudo lvextend -l +100%FREE /dev/ubuntu-vg/ubuntu-lv' \
+                'sudo resize2fs /dev/ubuntu-vg/ubuntu-lv' \
+                'echo "grub-pc grub-pc/install_devices multiselect /dev/sda" | sudo debconf-set-selections' \
+                'DEBIAN_FRONTEND=noninteractive sudo apt-get update' \
+                'DEBIAN_FRONTEND=noninteractive sudo apt-get upgrade -y' \
+                'sudo apt-get install -y net-tools ruby jq chrony' \
+                'sudo systemctl enable chrony --now' \
+                'sudo chronyc -a makestep'; do
                 run_on_node "${NODE_NAME}$i" "$cmd"
             done
         done
