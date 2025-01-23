@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 set -e
+set -u
 
 VELERO_VERSION="v1.12.0"
 VELERO_CLI_PATH="/usr/local/bin/velero"
