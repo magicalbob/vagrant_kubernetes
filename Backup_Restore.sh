@@ -56,6 +56,37 @@ else
     echo "Velero deployment is already available. Skipping wait."
 fi
 
+# Create PV to match new cluster config
+echo "Creating sonarqube data pv
+cat <<EOF | kubectl apply -f -
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: postgresql-data
+  labels:
+    velero.io/backup-name: postgres
+    velero.io/restore-name: postgres-20250123221021
+spec:
+  capacity:
+    storage: 10Gi
+  accessModes:
+  - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: local-storage
+  local:
+    path: /home/vagrant/projects/k8s_postgres/postgresql-data
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: kubernetes.io/hostname
+          operator: In
+          values:
+          - machine2
+EOF
+
+ssh machine2 mkdir -p /home/vagrant/projects/k8s_postgres/postgresql-data
+
 echo "Finding the latest completed backup..."
 LATEST_BACKUP=""
 BACKUP_TIMEOUT=300  # 5 minutes
