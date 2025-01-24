@@ -57,7 +57,7 @@ else
 fi
 
 # Create PV to match new cluster config
-echo "Creating sonarqube data pv
+echo "Creating sonarqube data pv"
 cat <<EOF | kubectl apply -f -
 apiVersion: v1
 kind: PersistentVolume
