@@ -56,18 +56,6 @@ else
     echo "Velero deployment is already available. Skipping wait."
 fi
 
-# Create node mapping ConfigMap
-echo "Creating node mapping ConfigMap..."
-cat <<EOF | kubectl apply -f -
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: node-mapping
-  namespace: velero
-data:
-  node4: machine2
-EOF
-
 echo "Finding the latest completed backup..."
 LATEST_BACKUP=""
 BACKUP_TIMEOUT=300  # 5 minutes
@@ -117,7 +105,7 @@ if [ -n "$EXISTING_RESTORE" ]; then
     exit 0
 else
     echo "Initiating a restore for backup: $LATEST_BACKUP"
-    RESTORE_OUTPUT=$(velero restore create --volume-mappings configmap:velero/node-mapping --from-backup "$LATEST_BACKUP" 2>&1)
+    RESTORE_OUTPUT=$(velero restore create --from-backup "$LATEST_BACKUP" 2>&1)
     echo "Restore command output: $RESTORE_OUTPUT"
 
     if echo "$RESTORE_OUTPUT" | grep -q "Restore request .* submitted successfully"; then
