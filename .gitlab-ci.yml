@@ -1,7 +1,8 @@
-before_script:
-  - sudo mkdir -p ~/.ssh
-  - echo "$THE_WAY" | base64 --decode | sudo tee ~/.ssh/the_way > /dev/null
-  - sudo chmod 600 ~/.ssh/the_way
+.ssh_setup:
+  before_script:
+    - sudo mkdir -p ~/.ssh
+    - echo "$THE_WAY" | base64 --decode | sudo tee ~/.ssh/the_way > /dev/null
+    - sudo chmod 600 ~/.ssh/the_way
 
 stages:
  - destroy_job
@@ -9,8 +10,10 @@ stages:
  - skip_up_job
  - validate_cluster
  - restore_cluster
+ - terraform_apply
 
 destroy_job:
+  extends: .ssh_setup
   image: docker.ellisbs.co.uk:5190/ubuntu:24.04
   stage: destroy_job
   tags:
@@ -19,6 +22,7 @@ destroy_job:
     - sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET 'cd Documents/src/test && vagrant destroy -f'
 
 up_only_job:
+  extends: .ssh_setup
   image: docker.ellisbs.co.uk:5190/ubuntu:24.04
   stage: up_only_job
   tags:
@@ -31,6 +35,7 @@ up_only_job:
     - sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET 'cd Documents/src/test && ./Make_Kubernetes.sh --location vagrant UP_ONLY'
 
 skip_up_job:
+  extends: .ssh_setup
   image: docker.ellisbs.co.uk:5190/ubuntu:24.04
   stage: skip_up_job
   tags:
@@ -46,6 +51,7 @@ skip_up_job:
     - sh /tmp/dynamics_action.sh
 
 validate_cluster:
+  extends: .ssh_setup
   retry:
     max: 2
     when:
@@ -79,6 +85,7 @@ validate_cluster:
     - up_only_job
 
 restore_cluster:
+  extends: .ssh_setup
   retry:
     max: 2
     when:
@@ -103,3 +110,50 @@ restore_cluster:
   dependencies:
     - validate_cluster
   allow_failure: true
+
+#    - NODE1_IP=$(ssh node1 "qm guest exec 200 -- ip -4 -j addr show" | jq -r '.["out-data"] | fromjson | map(.addr_info[] | select(.family == "inet") | .local) | map(select(. != "127.0.0.1")) | last')
+#    - NODE2_IP=$(ssh node2 "qm guest exec 400 -- ip -4 -j addr show" | jq -r '.["out-data"] | fromjson | map(.addr_info[] | select(.family == "inet") | .local) | map(select(. != "127.0.0.1")) | last')
+#    - NODE3_IP=$(ssh node3 "qm guest exec 600 -- ip -4 -j addr show" | jq -r '.["out-data"] | fromjson | map(.addr_info[] | select(.family == "inet") | .local) | map(select(. != "127.0.0.1")) | last')
+#    - NODE4_IP=$(ssh node4 "qm guest exec 800 -- ip -4 -j addr show" | jq -r '.["out-data"] | fromjson | map(.addr_info[] | select(.family == "inet") | .local) | map(select(. != "127.0.0.1")) | last')
+
+terraform_apply:
+  retry:
+    max: 2
+    when:
+      - script_failure
+      - api_failure
+  image: docker.ellisbs.co.uk:5190/ubuntu:24.04
+  stage: terraform_apply
+  tags:
+    - linux
+  timeout: 1h
+  script:
+    - if ! curl -f http://$NODE1:8006 > /dev/null 2>&1; then
+        echo "Sorry proxmox not available";
+        exit 0;
+      fi
+    - apt-get update
+    - DEBIAN_FRONTEND=noninteractive apt-get install -y tzdata docker-compose
+    - cd terraform
+    - echo "MY_PROJECT_TOKEN=${MY_PROJECT_TOKEN}" >> .env
+    - echo "CI_JOB_TOKEN=${CI_JOB_TOKEN}" >> .env
+    - echo "CI_SERVER_HOST=${CI_SERVER_HOST}" >> .env
+    - echo "CI_PROJECT_PATH=${CI_PROJECT_PATH}" >> .env
+    - echo "CI_COMMIT_SHA=${CI_COMMIT_SHA}" >> .env
+    - docker-compose up -d
+    - docker-compose exec -T opentofu sh -c "
+        cd /opt/pwd &&
+        rm -rf vagrant_kubernetes &&
+        export CI_JOB_TOKEN=${MY_PROJECT_TOKEN}  &&
+        export CI_SERVER_HOST=gitlab.ellisbs.co.uk  &&
+        export CI_PROJECT_PATH=ian/vagrant_kubernetes  &&
+        export CI_COMMIT_SHA=${CI_COMMIT_SHA}  &&
+        git config --global http.sslVerify false  &&
+        git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.ellisbs.co.uk/${CI_PROJECT_PATH}.git  &&
+        cd vagrant_kubernetes  &&
+        git checkout ${CI_COMMIT_SHA}  &&
+        cd terraform  &&
+        tofu init  &&
+        tofu validate &&
+        tofu apply --auto-approve
+      "
