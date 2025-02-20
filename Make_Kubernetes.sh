@@ -242,6 +242,11 @@ CLONE_CMD='
         exit 1
     fi'
 
+if [ ! -z "$KUBESPRAY_VERSION" ] && [ "$KUBESPRAY_VERSION" != "null" ]; then
+    echo "Checkout tag $KUBESPRAY_VERSION"
+    ssh "${NODE_NAME}1" "cd ./kubespray && git checkout $KUBESPRAY_VERSION"
+fi
+
 run_on_node "${NODE_NAME}1" "$CLONE_CMD"
 
 # Common setup steps
