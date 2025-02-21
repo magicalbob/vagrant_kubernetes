@@ -177,4 +177,6 @@ Make_Proxmox_K8S:
         echo "Sorry proxmox not available";
         exit 0;
       fi
+    - apt-get update
+    - apt-get install -y jq
     - ./make_proxmox_k8s.sh
