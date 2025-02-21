@@ -222,30 +222,33 @@ echo "$(generate_hosts_yaml)" > hosts.yaml
 copy_to_node hosts.yaml hosts.yaml "${NODE_NAME}1"
 
 # Clone kubespray repository
-echo "Clone the kubespray repository"
-CLONE_CMD="
-    MAX_ATTEMPTS=3
-    ATTEMPT=1
-    export KUBESPRAY_VERSION=$KUBESPRAY_VERSION
-    while [ \$ATTEMPT -le \$MAX_ATTEMPTS ]; do
-        echo "Attempt \$ATTEMPT of \$MAX_ATTEMPTS"
-        if [ ! -d "./kubespray" ] || [ -z "\$(ls -A ./kubespray)" ]; then
-            git clone https://github.com/kubernetes-sigs/kubespray.git /home/vagrant/kubespray && break
-        else
-            echo "Directory exists and is not empty. Removing contents..."
-            rm -rf ./kubespray
-        fi
-        ATTEMPT=\$((ATTEMPT+1))
-        [ \$ATTEMPT -le \$MAX_ATTEMPTS ] && echo "Retrying in 5 seconds..." && sleep 5
-    done
-    if [ \$ATTEMPT -gt \$MAX_ATTEMPTS ]; then
-        echo "Failed to clone repository after \$MAX_ATTEMPTS attempts"
-        exit 1
+CLONE_CMD=$(cat << 'EOF'
+MAX_ATTEMPTS=3
+ATTEMPT=1
+export KUBESPRAY_VERSION=$KUBESPRAY_VERSION
+while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
+    echo "Attempt $ATTEMPT of $MAX_ATTEMPTS"
+    if [ ! -d "./kubespray" ] || [ -z "$(ls -A ./kubespray)" ]; then
+        git clone https://github.com/kubernetes-sigs/kubespray.git /home/vagrant/kubespray && break
+    else
+        echo "Directory exists and is not empty. Removing contents..."
+        rm -rf ./kubespray
     fi
-    if [ ! -z "\$KUBESPRAY_VERSION" ] && [ "\$KUBESPRAY_VERSION" != "null" ]; then
-        echo "Checkout tag \$KUBESPRAY_VERSION"
-        cd ./kubespray && git checkout \$KUBESPRAY_VERSION
-    fi"
+    ATTEMPT=$((ATTEMPT+1))
+    [ $ATTEMPT -le $MAX_ATTEMPTS ] && echo "Retrying in 5 seconds..." && sleep 5
+done
+
+if [ $ATTEMPT -gt $MAX_ATTEMPTS ]; then
+    echo "Failed to clone repository after $MAX_ATTEMPTS attempts"
+    exit 1
+fi
+
+if [ ! -z "$KUBESPRAY_VERSION" ] && [ "$KUBESPRAY_VERSION" != "null" ]; then
+    echo "Checkout tag $KUBESPRAY_VERSION"
+    cd ./kubespray && git checkout $KUBESPRAY_VERSION
+fi
+EOF
+)
 
 run_on_node "${NODE_NAME}1" "$CLONE_CMD"
 
