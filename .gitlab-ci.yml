@@ -20,7 +20,14 @@ destroy_job:
   tags:
     - linux
   script:
-    - sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET 'cd Documents/src/test && vagrant destroy -f'
+    - sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET '
+        if [ -f Documents/src/test/Vagrantfile ]; then
+          echo "Vagrantfile found. Proceeding with destruction...";
+          cd Documents/src/test && vagrant destroy -f;
+        else
+          echo "No Vagrantfile found. Exiting gracefully.";
+          exit 0;
+        fi'
 
 up_only_job:
   extends: .ssh_setup
