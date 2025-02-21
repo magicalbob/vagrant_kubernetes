@@ -170,18 +170,4 @@ Make_Proxmox_K8S:
         echo "Sorry proxmox not available";
         exit 0;
       fi
-    - sudo mkdir -p ~/.ssh
-    - echo "$NODE1_KEY" | base64 --decode > ~/.ssh/id_node1 > /dev/null
-    - sudo chmod 600 ~/.ssh/id_node1
-    - echo  "$NODE1 node1" >> /etc/hosts
-    - echo  "$NODE2 node2" >> /etc/hosts
-    - echo  "$NODE3 node3" >> /etc/hosts
-    - echo  "$NODE4 node4" >> /etc/hosts
-    - NODE1_IP=$(ssh -i ~/.ssh/id_node1 root@node1 "qm guest exec 200 -- ip -4 -j addr show" | jq -r '.["out-data"] | fromjson | map(.addr_info[] | select(.family == "inet") | .local) | map(select(. != "127.0.0.1")) | last')
-    - NODE2_IP=$(ssh -i ~/.ssh/id_node1 root@node2 "qm guest exec 400 -- ip -4 -j addr show" | jq -r '.["out-data"] | fromjson | map(.addr_info[] | select(.family == "inet") | .local) | map(select(. != "127.0.0.1")) | last')
-    - NODE3_IP=$(ssh -i ~/.ssh/id_node1 root@node3 "qm guest exec 600 -- ip -4 -j addr show" | jq -r '.["out-data"] | fromjson | map(.addr_info[] | select(.family == "inet") | .local) | map(select(. != "127.0.0.1")) | last')
-    - NODE4_IP=$(ssh -i ~/.ssh/id_node1 root@node4 "qm guest exec 800 -- ip -4 -j addr show" | jq -r '.["out-data"] | fromjson | map(.addr_info[] | select(.family == "inet") | .local) | map(select(. != "127.0.0.1")) | last')
-    - echo "NODE1_IP: $NODE1_IP"
-    - echo "NODE2_IP: $NODE2_IP"
-    - echo "NODE3_IP: $NODE3_IP"
-    - echo "NODE4_IP: $NODE4_IP"
+    - ./make_proxmox_k8s.sh
