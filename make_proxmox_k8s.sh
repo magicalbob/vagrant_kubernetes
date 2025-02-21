@@ -23,7 +23,11 @@ NODE2_IP=$(get_ip "node2" 400)
 NODE3_IP=$(get_ip "node3" 600)
 NODE4_IP=$(get_ip "node4" 800)
 
-echo "NODE1_IP: $NODE1_IP"
-echo "NODE2_IP: $NODE2_IP"
-echo "NODE3_IP: $NODE3_IP"
-echo "NODE4_IP: $NODE4_IP"
+echo "$NODE1_IP pm1" >> /etc/hosts
+echo "$NODE2_IP pm2" >> /etc/hosts
+echo "$NODE3_IP pm3" >> /etc/hosts
+echo "$NODE4_IP pm4" >> /etc/hosts
+
+export OPENAI_API_KEY=$OPENAI_API_KEY
+
+./Make_Kubernetes.sh --location physical SKIP_UP
