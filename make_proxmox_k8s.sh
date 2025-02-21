@@ -5,6 +5,10 @@ sudo mkdir -p ~/.ssh
 echo "$NODE1_KEY" | base64 --decode > ~/.ssh/id_node1
 sudo chmod 600 ~/.ssh/id_node1
 
+echo "$NODE1 node1" | sudo tee -a /etc/hosts
+echo "$NODE2 node2" | sudo tee -a /etc/hosts
+echo "$NODE3 node3" | sudo tee -a /etc/hosts
+echo "$NODE4 node4" | sudo tee -a /etc/hosts
 
 # Function to get IP
 get_ip() {
