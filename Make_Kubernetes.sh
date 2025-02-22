@@ -222,30 +222,30 @@ echo "$(generate_hosts_yaml)" > hosts.yaml
 copy_to_node hosts.yaml hosts.yaml "${NODE_NAME}1"
 
 # Clone kubespray repository
-CLONE_CMD=$(cat << 'EOF'
+CLONE_CMD=$(cat <<EOF
+export KUBESPRAY_VERSION=$KUBESPRAY_VERSION
 MAX_ATTEMPTS=3
 ATTEMPT=1
-export KUBESPRAY_VERSION=$KUBESPRAY_VERSION
-while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
-    echo "Attempt $ATTEMPT of $MAX_ATTEMPTS"
-    if [ ! -d "./kubespray" ] || [ -z "$(ls -A ./kubespray)" ]; then
+while [ \$ATTEMPT -le \$MAX_ATTEMPTS ]; do
+    echo "Attempt \$ATTEMPT of \$MAX_ATTEMPTS"
+    if [ ! -d "./kubespray" ] || [ -z "\$(ls -A ./kubespray)" ]; then
         git clone https://github.com/kubernetes-sigs/kubespray.git /home/vagrant/kubespray && break
     else
         echo "Directory exists and is not empty. Removing contents..."
         rm -rf ./kubespray
     fi
-    ATTEMPT=$((ATTEMPT+1))
-    [ $ATTEMPT -le $MAX_ATTEMPTS ] && echo "Retrying in 5 seconds..." && sleep 5
+    ATTEMPT=\$((ATTEMPT+1))
+    [ \$ATTEMPT -le \$MAX_ATTEMPTS ] && echo "Retrying in 5 seconds..." && sleep 5
 done
 
-if [ $ATTEMPT -gt $MAX_ATTEMPTS ]; then
-    echo "Failed to clone repository after $MAX_ATTEMPTS attempts"
+if [ \$ATTEMPT -gt \$MAX_ATTEMPTS ]; then
+    echo "Failed to clone repository after \$MAX_ATTEMPTS attempts"
     exit 1
 fi
 
-if [ ! -z "$KUBESPRAY_VERSION" ] && [ "$KUBESPRAY_VERSION" != "null" ]; then
-    echo "Checkout tag $KUBESPRAY_VERSION"
-    cd ./kubespray && git checkout $KUBESPRAY_VERSION
+if [ ! -z "\$KUBESPRAY_VERSION" ] && [ "\$KUBESPRAY_VERSION" != "null" ]; then
+    echo "Checkout tag \$KUBESPRAY_VERSION"
+    cd ./kubespray && git checkout \$KUBESPRAY_VERSION
 fi
 EOF
 )
