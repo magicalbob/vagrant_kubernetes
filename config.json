@@ -7,7 +7,7 @@
   "cpu_count" : 3,
   "pub_net": "192.168.56",
   "node_name": "pm",
-  "kube_network_plugin": "calico",
+  "kube_network_plugin": "cilium",
   "box_name": "bento/ubuntu-24.04",
   "disk_size": "100GB",
   "mac_address": "08:00:27:9e:87:aa"
