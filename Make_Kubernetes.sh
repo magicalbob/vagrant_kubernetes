@@ -140,6 +140,18 @@ if [[ "$LOCATION" == "vagrant" ]]; then
             run_on_node "${NODE_NAME}$i" "sudo cp /vagrant/hosts /etc/hosts"
         done
 
+	for i in $(seq 1 $TOTAL_NODES); do
+	    figlet -c "Disable IPv6 ${NODE_NAME}$i"
+            run_on_node "${NODE_NAME}$i" "
+                sudo sysctl -w net.ipv6.conf.all.disable_ipv6=1;
+                sudo sysctl -w net.ipv6.conf.default.disable_ipv6=1;
+                sudo sysctl -w net.ipv6.conf.lo.disable_ipv6=1;
+                echo 'net.ipv6.conf.all.disable_ipv6 = 1' | sudo tee -a /etc/sysctl.conf;
+                echo 'net.ipv6.conf.default.disable_ipv6 = 1' | sudo tee -a /etc/sysctl.conf;
+                echo 'net.ipv6.conf.lo.disable_ipv6 = 1' | sudo tee -a /etc/sysctl.conf;
+            "
+        done
+
         echo "Set up ssh between the nodes"
         copy_to_node "./insecure_private_key" "/home/vagrant/.ssh/id_rsa" "${NODE_NAME}1"
         ssh-keygen -y -f ./insecure_private_key > ./insecure_public_key
