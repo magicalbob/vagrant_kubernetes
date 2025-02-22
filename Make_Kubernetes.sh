@@ -115,6 +115,7 @@ if [[ "$LOCATION" == "vagrant" ]]; then
 
         echo "Update and upgrade each node"
         for i in $(seq 1 $TOTAL_NODES); do
+	    figlet -i "Provisioning ${NODE_NAME}$i"
             for cmd in \
                 'sudo pvresize /dev/sda3' \
                 'sudo lvextend -l +100%FREE /dev/ubuntu-vg/ubuntu-lv' \
@@ -144,6 +145,7 @@ if [[ "$LOCATION" == "vagrant" ]]; then
         ssh-keygen -y -f ./insecure_private_key > ./insecure_public_key
         
         for i in $(seq 1 $TOTAL_NODES); do
+	    figlet -i "Setting up SSH for ${NODE_NAME}$i"
             copy_to_node "./insecure_public_key" "/home/vagrant/.ssh/id_rsa.pub" "${NODE_NAME}$i"
             run_on_node "${NODE_NAME}$i" 'cat /home/vagrant/.ssh/id_rsa.pub >> /home/vagrant/.ssh/authorized_keys'
             run_on_node "${NODE_NAME}1" "echo uptime|ssh -o StrictHostKeyChecking=no ${PUB_NET}.22${i}"
