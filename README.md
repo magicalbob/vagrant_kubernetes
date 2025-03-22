@@ -56,7 +56,7 @@ The cluster settings are defined in config.json. This file specifies:
 - **cpu_count**: CPU count for each node (default: 2).
 - **pub_net**: Public network base IP (default: "192.168.56"). Only made use of by vagrant.
 - **node_name**: Name prefix of the nodes. Will be set and used by vagrant, but just used for physical.
-- **kube_network_plugin**: "cilium" or `calicon`
+- **kube_network_plugin**: "cilium" or `calico`
 - **box_name**: "bento/ubuntu-22.04". Name of vagrant box when location is vagrant.
 - **disk_size**: Disk size of each node (default: 100GB).
 

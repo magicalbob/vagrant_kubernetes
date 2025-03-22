@@ -115,6 +115,7 @@ if [[ "$LOCATION" == "vagrant" ]]; then
 
         echo "Update and upgrade each node"
         for i in $(seq 1 $TOTAL_NODES); do
+	    figlet -c "Provisioning ${NODE_NAME}$i"
             for cmd in \
                 'sudo pvresize /dev/sda3' \
                 'sudo lvextend -l +100%FREE /dev/ubuntu-vg/ubuntu-lv' \
@@ -139,11 +140,24 @@ if [[ "$LOCATION" == "vagrant" ]]; then
             run_on_node "${NODE_NAME}$i" "sudo cp /vagrant/hosts /etc/hosts"
         done
 
+	for i in $(seq 1 $TOTAL_NODES); do
+	    figlet -c "Disable IPv6 ${NODE_NAME}$i"
+            run_on_node "${NODE_NAME}$i" "
+                sudo sysctl -w net.ipv6.conf.all.disable_ipv6=1;
+                sudo sysctl -w net.ipv6.conf.default.disable_ipv6=1;
+                sudo sysctl -w net.ipv6.conf.lo.disable_ipv6=1;
+                echo 'net.ipv6.conf.all.disable_ipv6 = 1' | sudo tee -a /etc/sysctl.conf;
+                echo 'net.ipv6.conf.default.disable_ipv6 = 1' | sudo tee -a /etc/sysctl.conf;
+                echo 'net.ipv6.conf.lo.disable_ipv6 = 1' | sudo tee -a /etc/sysctl.conf;
+            "
+        done
+
         echo "Set up ssh between the nodes"
         copy_to_node "./insecure_private_key" "/home/vagrant/.ssh/id_rsa" "${NODE_NAME}1"
         ssh-keygen -y -f ./insecure_private_key > ./insecure_public_key
         
         for i in $(seq 1 $TOTAL_NODES); do
+	    figlet -c "Setting up SSH for ${NODE_NAME}$i"
             copy_to_node "./insecure_public_key" "/home/vagrant/.ssh/id_rsa.pub" "${NODE_NAME}$i"
             run_on_node "${NODE_NAME}$i" 'cat /home/vagrant/.ssh/id_rsa.pub >> /home/vagrant/.ssh/authorized_keys'
             run_on_node "${NODE_NAME}1" "echo uptime|ssh -o StrictHostKeyChecking=no ${PUB_NET}.22${i}"
@@ -222,25 +236,33 @@ echo "$(generate_hosts_yaml)" > hosts.yaml
 copy_to_node hosts.yaml hosts.yaml "${NODE_NAME}1"
 
 # Clone kubespray repository
-echo "Clone the kubespray repository"
-CLONE_CMD='
-    MAX_ATTEMPTS=3
-    ATTEMPT=1
-    while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
-        echo "Attempt $ATTEMPT of $MAX_ATTEMPTS"
-        if [ ! -d "./kubespray" ] || [ -z "$(ls -A ./kubespray)" ]; then
-            git clone https://github.com/kubernetes-sigs/kubespray.git /home/vagrant/kubespray && break
-        else
-            echo "Directory exists and is not empty. Removing contents..."
-            rm -rf ./kubespray
-        fi
-        ATTEMPT=$((ATTEMPT+1))
-        [ $ATTEMPT -le $MAX_ATTEMPTS ] && echo "Retrying in 5 seconds..." && sleep 5
-    done
-    if [ $ATTEMPT -gt $MAX_ATTEMPTS ]; then
-        echo "Failed to clone repository after $MAX_ATTEMPTS attempts"
-        exit 1
-    fi'
+CLONE_CMD=$(cat <<EOF
+export KUBESPRAY_VERSION=$KUBESPRAY_VERSION
+MAX_ATTEMPTS=3
+ATTEMPT=1
+while [ \$ATTEMPT -le \$MAX_ATTEMPTS ]; do
+    echo "Attempt \$ATTEMPT of \$MAX_ATTEMPTS"
+    if [ ! -d "./kubespray" ] || [ -z "\$(ls -A ./kubespray)" ]; then
+        git clone https://github.com/kubernetes-sigs/kubespray.git /home/vagrant/kubespray && break
+    else
+        echo "Directory exists and is not empty. Removing contents..."
+        rm -rf ./kubespray
+    fi
+    ATTEMPT=\$((ATTEMPT+1))
+    [ \$ATTEMPT -le \$MAX_ATTEMPTS ] && echo "Retrying in 5 seconds..." && sleep 5
+done
+
+if [ \$ATTEMPT -gt \$MAX_ATTEMPTS ]; then
+    echo "Failed to clone repository after \$MAX_ATTEMPTS attempts"
+    exit 1
+fi
+
+if [ ! -z "\$KUBESPRAY_VERSION" ] && [ "\$KUBESPRAY_VERSION" != "null" ]; then
+    echo "Checkout tag \$KUBESPRAY_VERSION"
+    cd ./kubespray && git checkout \$KUBESPRAY_VERSION
+fi
+EOF
+)
 
 run_on_node "${NODE_NAME}1" "$CLONE_CMD"
 
