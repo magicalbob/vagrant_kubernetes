@@ -15,84 +15,91 @@ class ClusterValidator
   end
 
   def validate_api_server
-    puts "Validating Kubernetes API server..."
+    puts "✅ Validating Kubernetes API server..."
     result = run_command("kubectl get --raw /healthz")
-    if result == "ok"
-      puts "Kubernetes API server is healthy."
-    else
-      raise "API server health check failed: #{result}"
-    end
+    raise "❌ API server health check failed: #{result}" unless result == "ok"
+    puts "✅ Kubernetes API server is healthy."
   end
 
   def validate_nodes
-    puts "Validating Kubernetes nodes..."
+    puts "✅ Validating Kubernetes nodes..."
     nodes = JSON.parse(run_command("kubectl get nodes -o json"))
     nodes['items'].each do |node|
       name = node['metadata']['name']
       status = node['status']['conditions'].find { |c| c['type'] == 'Ready' }['status']
       if status == "True"
-        puts "Node #{name} is Ready."
+        puts "✅ Node #{name} is Ready."
         validate_node_conditions(node)
       else
-        raise "Node #{name} is not Ready!"
+        raise "❌ Node #{name} is NOT Ready!"
       end
     end
   end
 
   def validate_node_conditions(node)
     capacity = node['status']['capacity']
-    puts "  CPU: #{capacity['cpu']}, Memory: #{capacity['memory']}"
+    puts "  🏗️  CPU: #{capacity['cpu']}, Memory: #{capacity['memory']}"
     pressure_conditions = ['DiskPressure', 'MemoryPressure', 'PIDPressure']
     pressure_conditions.each do |condition|
       status = node['status']['conditions'].find { |c| c['type'] == condition }['status']
-      puts "  #{condition}: #{status == 'False' ? 'OK' : 'Warning!'}"
+      puts "  #{condition}: #{status == 'False' ? '✅ OK' : '⚠️ WARNING!'}"
     end
+
+    # NEW: Check kubelet service status
+    puts "  🔍 Checking kubelet service..."
+    kubelet_status = run_command("kubectl describe node #{node['metadata']['name']} | grep -i 'Conditions' -A 10")
+    puts kubelet_status
+
+    # NEW: Check container runtime status
+    puts "  🔍 Checking container runtime..."
+    containerd_status = run_command("kubectl get nodes -o wide")
+    puts containerd_status
   end
 
   def validate_namespace
-    puts "Validating default namespaces..."
+    puts "✅ Validating default namespaces..."
     namespaces = JSON.parse(run_command("kubectl get namespaces -o json"))
     required_namespaces = ['default', 'kube-system', 'kube-public', 'kube-node-lease']
     required_namespaces.each do |ns|
       if namespaces['items'].any? { |namespace| namespace['metadata']['name'] == ns }
-        puts "Namespace #{ns} exists."
+        puts "✅ Namespace #{ns} exists."
       else
-        raise "Namespace #{ns} is missing!"
+        raise "❌ Namespace #{ns} is missing!"
       end
     end
   end
 
   def validate_core_services
-    puts "Validating core services..."
+    puts "✅ Validating core services..."
     services = run_command("kubectl get pods -n kube-system")
     required_services = ['kube-apiserver', 'kube-controller-manager', 'kube-scheduler', 'coredns', 'kube-proxy']
     required_services.each do |service|
       if services.include?(service)
-        puts "#{service} is running."
+        puts "✅ #{service} is running."
       else
-        raise "#{service} is not running!"
+        raise "❌ #{service} is NOT running!"
       end
     end
   end
 
   def validate_coredns
-    puts "Validating CoreDNS..."
+    puts "✅ Validating CoreDNS..."
     coredns_pods = JSON.parse(run_command("kubectl get pods -n kube-system -l k8s-app=kube-dns -o json"))
     coredns_pods['items'].each do |pod|
       name = pod['metadata']['name']
       status = pod['status']['phase']
       ready = pod['status']['containerStatuses']&.all? { |container| container['ready'] }
       if status == 'Running' && ready
-        puts "CoreDNS pod #{name} is healthy."
+        puts "✅ CoreDNS pod #{name} is healthy."
       else
-        raise "CoreDNS pod #{name} is not healthy! Status: #{status}, Ready: #{ready}"
+        raise "❌ CoreDNS pod #{name} is NOT healthy! Status: #{status}, Ready: #{ready}"
       end
     end
     validate_dns_resolution
   end
 
   def validate_dns_resolution
-    puts "Validating DNS resolution..."
+    puts "✅ Validating DNS resolution..."
     test_pod_yaml = <<~YAML
       apiVersion: v1
       kind: Pod
@@ -109,23 +116,34 @@ class ClusterValidator
     dns_test_output = run_command("kubectl logs dns-test")
     run_command("kubectl delete pod dns-test")
     unless dns_test_output.include?('kubernetes.default.svc.cluster.local')
-      raise "DNS resolution test failed!"
+      raise "❌ DNS resolution test failed!"
     end
-    puts "DNS resolution test passed."
+    puts "✅ DNS resolution test passed."
   end
 
   def validate_etcd
-    puts "Validating etcd cluster health..."
+    puts "✅ Validating etcd cluster health..."
     etcd_pods = JSON.parse(run_command("kubectl get pods -n kube-system -l component=etcd -o json"))
     etcd_pods['items'].each do |pod|
       name = pod['metadata']['name']
       status = pod['status']['phase']
       ready = pod['status']['containerStatuses']&.all? { |container| container['ready'] }
       if status == 'Running' && ready
-        puts "etcd pod #{name} is healthy."
+        puts "✅ etcd pod #{name} is healthy."
       else
-        raise "etcd pod #{name} is not healthy! Status: #{status}, Ready: #{ready}"
+        raise "❌ etcd pod #{name} is NOT healthy! Status: #{status}, Ready: #{ready}"
       end
+    end
+  end
+
+  def validate_kubelet_logs
+    puts "🔍 Checking kubelet logs for TLS issues..."
+    tls_errors = run_command("journalctl -u kubelet --no-pager | grep 'certificate' || echo ''")
+    if tls_errors.empty?
+      puts "✅ No TLS certificate issues detected in kubelet logs."
+    else
+      puts "❌ TLS certificate errors detected:"
+      puts tls_errors
     end
   end
 
@@ -133,29 +151,30 @@ class ClusterValidator
     attempts = 0
     begin
       attempts += 1
-      puts "Validation attempt #{attempts}..."
+      puts "🔁 Validation attempt #{attempts}..."
       main_validation
     rescue => e
       puts e.message
       if attempts < MAX_RETRIES
-        puts "Retrying in #{RETRY_DELAY} seconds..."
+        puts "🔄 Retrying in #{RETRY_DELAY} seconds..."
         sleep(RETRY_DELAY)
         retry
       else
-        raise "Cluster validation failed after #{MAX_RETRIES} attempts."
+        raise "❌ Cluster validation failed after #{MAX_RETRIES} attempts."
       end
     end
   end
 
   def main_validation
-    puts "Starting Kubernetes cluster validation..."
+    puts "🚀 Starting Kubernetes cluster validation..."
     validate_api_server
     validate_nodes
     validate_namespace
     validate_core_services
     validate_coredns
     validate_etcd
-    puts "Kubernetes cluster validation passed successfully!"
+    validate_kubelet_logs
+    puts "✅ Kubernetes cluster validation passed successfully!"
   end
 end
 

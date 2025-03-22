@@ -82,10 +82,10 @@ spec:
         - key: kubernetes.io/hostname
           operator: In
           values:
-          - machine2
+          - pm2
 EOF
 
-ssh machine2 mkdir -p /home/vagrant/projects/k8s_postgres/postgresql-data
+ssh pm2 mkdir -p /home/vagrant/projects/k8s_postgres/postgresql-data
 
 echo "Finding the latest completed backup..."
 LATEST_BACKUP=""
