@@ -178,7 +178,7 @@ if [[ "$LOCATION" == "vagrant" ]]; then
                         
                         # If this is the last attempt, try to remediate
                         if [ $attempt -eq $MAX_RETRY ]; then
-                            echo "Attempting to remediate node ${NODE_NAME}$j..."
+	                    figlet -c "Attempting to remediate node ${NODE_NAME}$j..."
                             
                             # First try restarting SSH on the problematic node
                             run_on_node "${NODE_NAME}$j" "sudo systemctl restart sshd" || true
@@ -188,7 +188,7 @@ if [[ "$LOCATION" == "vagrant" ]]; then
                             
                             # Test again
                             if ! run_on_node "${NODE_NAME}$i" "ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 ${NODE_NAME}$j exit 2>/dev/null"; then
-                                echo "Remediation failed. Rebuilding node ${NODE_NAME}$j..."
+	                        figlet -c "Remediation failed. Rebuilding node ${NODE_NAME}$j..."
                                 vagrant destroy -f "${NODE_NAME}$j"
                                 vagrant up "${NODE_NAME}$j"
                                 
