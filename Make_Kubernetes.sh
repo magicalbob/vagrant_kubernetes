@@ -163,6 +163,80 @@ if [[ "$LOCATION" == "vagrant" ]]; then
             run_on_node "${NODE_NAME}1" "echo uptime|ssh -o StrictHostKeyChecking=no ${PUB_NET}.22${i}"
         done
 
+        echo "Verifying SSH connectivity between all nodes"
+        # Check if all nodes can connect to each other
+        MAX_RETRY=3
+        for attempt in $(seq 1 $MAX_RETRY); do
+            all_nodes_healthy=true
+            
+            for i in $(seq 1 $TOTAL_NODES); do
+                for j in $(seq 1 $TOTAL_NODES); do
+                    echo "Testing SSH from ${NODE_NAME}$i to ${NODE_NAME}$j (attempt $attempt of $MAX_RETRY)..."
+                    if ! run_on_node "${NODE_NAME}$i" "ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 ${NODE_NAME}$j exit 2>/dev/null"; then
+                        echo "WARNING: SSH from ${NODE_NAME}$i to ${NODE_NAME}$j failed"
+                        all_nodes_healthy=false
+                        
+                        # If this is the last attempt, try to remediate
+                        if [ $attempt -eq $MAX_RETRY ]; then
+                            echo "Attempting to remediate node ${NODE_NAME}$j..."
+                            
+                            # First try restarting SSH on the problematic node
+                            run_on_node "${NODE_NAME}$j" "sudo systemctl restart sshd" || true
+                            
+                            # Wait a moment for SSH to restart
+                            sleep 5
+                            
+                            # Test again
+                            if ! run_on_node "${NODE_NAME}$i" "ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 ${NODE_NAME}$j exit 2>/dev/null"; then
+                                echo "Remediation failed. Rebuilding node ${NODE_NAME}$j..."
+                                vagrant destroy -f "${NODE_NAME}$j"
+                                vagrant up "${NODE_NAME}$j"
+                                
+                                # Reconfigure the rebuilt node
+                                run_on_node "${NODE_NAME}$j" 'sudo pvresize /dev/sda3'
+                                run_on_node "${NODE_NAME}$j" 'sudo lvextend -l +100%FREE /dev/ubuntu-vg/ubuntu-lv'
+                                run_on_node "${NODE_NAME}$j" 'sudo resize2fs /dev/ubuntu-vg/ubuntu-lv'
+                                run_on_node "${NODE_NAME}$j" 'echo "grub-pc grub-pc/install_devices multiselect /dev/sda" | sudo debconf-set-selections'
+                                run_on_node "${NODE_NAME}$j" 'DEBIAN_FRONTEND=noninteractive sudo apt-get update'
+                                run_on_node "${NODE_NAME}$j" 'DEBIAN_FRONTEND=noninteractive sudo apt-get upgrade -y'
+                                run_on_node "${NODE_NAME}$j" 'sudo apt-get install -y net-tools ruby jq chrony'
+                                run_on_node "${NODE_NAME}$j" 'sudo systemctl enable chrony --now'
+                                run_on_node "${NODE_NAME}$j" 'sudo chronyc -a makestep'
+                                run_on_node "${NODE_NAME}$j" "sudo cp /vagrant/hosts /etc/hosts"
+                                run_on_node "${NODE_NAME}$j" "sudo sysctl -w net.ipv6.conf.all.disable_ipv6=1"
+                                run_on_node "${NODE_NAME}$j" "sudo sysctl -w net.ipv6.conf.default.disable_ipv6=1"
+                                run_on_node "${NODE_NAME}$j" "sudo sysctl -w net.ipv6.conf.lo.disable_ipv6=1"
+                                run_on_node "${NODE_NAME}$j" "echo 'net.ipv6.conf.all.disable_ipv6 = 1' | sudo tee -a /etc/sysctl.conf"
+                                run_on_node "${NODE_NAME}$j" "echo 'net.ipv6.conf.default.disable_ipv6 = 1' | sudo tee -a /etc/sysctl.conf"
+                                run_on_node "${NODE_NAME}$j" "echo 'net.ipv6.conf.lo.disable_ipv6 = 1' | sudo tee -a /etc/sysctl.conf"
+                                
+                                # Set up SSH for the rebuilt node
+                                copy_to_node "./insecure_private_key" "/home/vagrant/.ssh/id_rsa" "${NODE_NAME}$j"
+                                copy_to_node "./insecure_public_key" "/home/vagrant/.ssh/id_rsa.pub" "${NODE_NAME}$j"
+                                run_on_node "${NODE_NAME}$j" 'cat /home/vagrant/.ssh/id_rsa.pub >> /home/vagrant/.ssh/authorized_keys'
+                                
+                                # Final verification
+                                if ! run_on_node "${NODE_NAME}$i" "ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 ${NODE_NAME}$j exit 2>/dev/null"; then
+                                    echo "ERROR: Failed to establish SSH connectivity to ${NODE_NAME}$j after rebuilding. Exiting."
+                                    exit 1
+                                fi
+                            fi
+                        fi
+                    fi
+                done
+            done
+            
+            if $all_nodes_healthy; then
+                echo "All nodes can connect to each other via SSH."
+                break
+            fi
+            
+            if [ $attempt -lt $MAX_RETRY ]; then
+                echo "Retrying SSH connectivity check in 10 seconds..."
+                sleep 10
+            fi
+        done
+
         echo "Script $(basename "$0") has finished"
         exit 0
     fi
