@@ -108,11 +108,11 @@ if [[ "$LOCATION" == "vagrant" ]]; then
         vagrant up --no-provision
 
         echo "Set up ssh between the nodes"
-        copy_to_node "./insecure_private_key" "/home/vagrant/.ssh/id_rsa" "${NODE_NAME}1"
         ssh-keygen -y -f ./insecure_private_key > ./insecure_public_key
 
         for i in $(seq 1 $TOTAL_NODES); do
             figlet -c "Setting up SSH for ${NODE_NAME}$i"
+            copy_to_node "./insecure_private_key" "/home/vagrant/.ssh/id_rsa" "${NODE_NAME}$i"
             copy_to_node "./insecure_public_key" "/home/vagrant/.ssh/id_rsa.pub" "${NODE_NAME}$i"
             run_on_node "${NODE_NAME}$i" 'cat /home/vagrant/.ssh/id_rsa.pub >> /home/vagrant/.ssh/authorized_keys'
             run_on_node "${NODE_NAME}1" "echo uptime|ssh -o StrictHostKeyChecking=no ${PUB_NET}.22${i}"
