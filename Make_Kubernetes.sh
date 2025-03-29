@@ -118,6 +118,17 @@ if [[ "$LOCATION" == "vagrant" ]]; then
             run_on_node "${NODE_NAME}1" "echo uptime|ssh -o StrictHostKeyChecking=no ${PUB_NET}.22${i}"
         done
 
+        echo "Write /etc/hosts file"
+
+        cp hosts.template hosts
+        for i in $(seq 1 $TOTAL_NODES); do
+            echo ${PUB_NET}.22${i} ${NODE_NAME}${i} >> hosts
+        done
+
+        for i in $(seq 1 $TOTAL_NODES); do
+            run_on_node "${NODE_NAME}$i" "sudo cp /vagrant/hosts /etc/hosts"
+        done
+
         echo "Verifying SSH connectivity between all nodes"
         # Check if all nodes can connect to each other
         MAX_RETRY=3
@@ -192,16 +203,6 @@ if [[ "$LOCATION" == "vagrant" ]]; then
                 'sudo chronyc -a makestep'; do
                 run_on_node "${NODE_NAME}$i" "$cmd"
             done
-        done
-
-        echo "Write /etc/hosts file"
-        cp hosts.template hosts
-        for i in $(seq 1 $TOTAL_NODES); do
-            echo ${PUB_NET}.22${i} ${NODE_NAME}${i} >> hosts
-        done
-
-        for i in $(seq 1 $TOTAL_NODES); do
-            run_on_node "${NODE_NAME}$i" "sudo cp /vagrant/hosts /etc/hosts"
         done
 
 	for i in $(seq 1 $TOTAL_NODES); do
