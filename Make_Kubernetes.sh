@@ -227,9 +227,6 @@ if [[ "$LOCATION" == "vagrant" ]]; then
             run_on_node "${NODE_NAME}1" "echo uptime|ssh -o StrictHostKeyChecking=no ${PUB_NET}.22${i}"
         done
 
-        echo "DEBUG sleep to allow checking"
-	sleep 3600
-
         echo "Verifying SSH connectivity between all nodes"
         # Check if all nodes can connect to each other
         MAX_RETRY=3
