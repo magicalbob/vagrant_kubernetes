@@ -4,7 +4,7 @@ diagrams==0.24.4
 exceptiongroup==1.2.2
 executing==2.1.0
 graphviz==0.20.3
-ipython==8.31.0
+ipython==9.0.2
 jedi==0.19.2
 Jinja2==3.1.6
 MarkupSafe==3.0.2
@@ -18,5 +18,5 @@ Pygments==2.19.1
 six==1.17.0
 stack-data==0.6.3
 traitlets==5.14.3
-typing_extensions==4.12.2
+typing_extensions==4.13.0
 wcwidth==0.2.13
