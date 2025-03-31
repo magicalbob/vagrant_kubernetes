@@ -1,7 +1,8 @@
-before_script:
-  - sudo mkdir -p ~/.ssh
-  - echo "$THE_WAY" | base64 --decode | sudo tee ~/.ssh/the_way > /dev/null
-  - sudo chmod 600 ~/.ssh/the_way
+.ssh_setup:
+  before_script:
+    - sudo mkdir -p ~/.ssh
+    - echo "$THE_WAY" | base64 --decode | sudo tee ~/.ssh/the_way > /dev/null
+    - sudo chmod 600 ~/.ssh/the_way
 
 stages:
  - destroy_job
@@ -9,21 +10,37 @@ stages:
  - skip_up_job
  - validate_cluster
  - restore_cluster
+ - terraform_apply
+ - Make_Proxmox_K8S
 
 destroy_job:
+  extends: .ssh_setup
   image: docker.ellisbs.co.uk:5190/ubuntu:24.04
   stage: destroy_job
   tags:
     - linux
   script:
-    - sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET 'cd Documents/src/test && vagrant destroy -f'
+    - sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET '
+        if [ -f Documents/src/test/Vagrantfile ]; then
+          echo "Vagrantfile found. Proceeding with destruction...";
+          cd Documents/src/test && vagrant destroy -f;
+        else
+          echo "No Vagrantfile found. Exiting gracefully.";
+          exit 0;
+        fi'
 
 up_only_job:
+  extends: .ssh_setup
   image: docker.ellisbs.co.uk:5190/ubuntu:24.04
   stage: up_only_job
   tags:
     - linux
   timeout: 3h
+  retry:
+    max: 2
+    when:
+      - script_failure
+      - api_failure
   script:
     - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T Make_Kubernetes.sh $TEST_TARGET:Documents/src/test/Make_Kubernetes.sh
     - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T config.json $TEST_TARGET:Documents/src/test/config.json
@@ -31,6 +48,7 @@ up_only_job:
     - sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET 'cd Documents/src/test && ./Make_Kubernetes.sh --location vagrant UP_ONLY'
 
 skip_up_job:
+  extends: .ssh_setup
   image: docker.ellisbs.co.uk:5190/ubuntu:24.04
   stage: skip_up_job
   tags:
@@ -46,6 +64,7 @@ skip_up_job:
     - sh /tmp/dynamics_action.sh
 
 validate_cluster:
+  extends: .ssh_setup
   retry:
     max: 2
     when:
@@ -79,6 +98,7 @@ validate_cluster:
     - up_only_job
 
 restore_cluster:
+  extends: .ssh_setup
   retry:
     max: 2
     when:
@@ -97,9 +117,71 @@ restore_cluster:
     # Get name of first node
     - export NODE_NAME="$(jq -r '.node_name' config.json)1"
     # Make directory for postgres pv
-    - sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET "cd Documents/src/test/ && vagrant ssh -c 'ssh -o StrictHostKeyChecking=no machine2  mkdir -p /home/vagrant/k8s_postgres/postgresql-data' $NODE_NAME"
+    - sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET "cd Documents/src/test/ && vagrant ssh -c 'ssh -o StrictHostKeyChecking=no pm2  mkdir -p /home/vagrant/k8s_postgres/postgresql-data' $NODE_NAME"
     # Execute backup restore script
     - sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET "cd Documents/src/test/ && chmod +x Backup_Restore.sh && vagrant ssh -c 'cd /vagrant && ./Backup_Restore.sh' $NODE_NAME"
   dependencies:
     - validate_cluster
   allow_failure: true
+
+terraform_apply:
+  retry:
+    max: 2
+    when:
+      - script_failure
+      - api_failure
+  image: docker.ellisbs.co.uk:5190/ubuntu:24.04
+  stage: terraform_apply
+  tags:
+    - linux
+  timeout: 1h
+  script:
+    - if ! curl -f http://$NODE1:8006 > /dev/null 2>&1; then
+        echo "Sorry proxmox not available";
+        exit 0;
+      fi
+    - apt-get update
+    - DEBIAN_FRONTEND=noninteractive apt-get install -y tzdata docker-compose
+    - cd terraform
+    - echo "MY_PROJECT_TOKEN=${MY_PROJECT_TOKEN}" >> .env
+    - echo "CI_JOB_TOKEN=${CI_JOB_TOKEN}" >> .env
+    - echo "CI_SERVER_HOST=${CI_SERVER_HOST}" >> .env
+    - echo "CI_PROJECT_PATH=${CI_PROJECT_PATH}" >> .env
+    - echo "CI_COMMIT_SHA=${CI_COMMIT_SHA}" >> .env
+    - docker-compose up -d
+    - docker-compose exec -T opentofu sh -c "
+        cd /opt/pwd &&
+        rm -rf vagrant_kubernetes &&
+        export CI_JOB_TOKEN=${MY_PROJECT_TOKEN}  &&
+        export CI_SERVER_HOST=gitlab.ellisbs.co.uk  &&
+        export CI_PROJECT_PATH=ian/vagrant_kubernetes  &&
+        export CI_COMMIT_SHA=${CI_COMMIT_SHA}  &&
+        git config --global http.sslVerify false  &&
+        git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.ellisbs.co.uk/${CI_PROJECT_PATH}.git  &&
+        cd vagrant_kubernetes  &&
+        git checkout ${CI_COMMIT_SHA}  &&
+        cd terraform  &&
+        tofu init  &&
+        tofu validate &&
+        tofu apply --auto-approve
+      "
+
+Make_Proxmox_K8S:
+  retry:
+    max: 2
+    when:
+      - script_failure
+      - api_failure
+  image: docker.ellisbs.co.uk:5190/ubuntu:24.04
+  stage: Make_Proxmox_K8S
+  tags:
+    - linux
+  timeout: 1h
+  script:
+    - if ! curl -f http://$NODE1:8006 > /dev/null 2>&1; then
+        echo "Sorry proxmox not available";
+        exit 0;
+      fi
+    - apt-get update
+    - apt-get install -y jq
+    - ./make_proxmox_k8s.sh

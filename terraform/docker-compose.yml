@@ -1,0 +1,17 @@
+version: '3.7'
+
+services:
+  opentofu:
+    image: docker.ellisbs.co.uk:5190/ghcr.io/opentofu/opentofu:1.9.0
+    container_name: opentofu_container
+    stdin_open: true
+    tty: true
+    volumes:
+      - /builds/ian/vagrant_kubernetes/terraform:/opt/pwd
+    extra_hosts:
+      - "node1:192.168.0.97"
+      - "node2:192.168.0.194"
+      - "node3:192.168.0.20"
+      - "node4:192.168.0.204"
+    entrypoint: bash
+
