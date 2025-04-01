@@ -427,6 +427,9 @@ for i in $(seq 1 $TOTAL_NODES); do
     run_on_node "${NODE_NAME}$i" "$NODE_SETUP_CMD"
 done
 
+# Set up ansible config
+copy_to_node ansible.cfg ansible.cfg "${NODE_NAME}1"
+
 # Run Ansible playbook
 echo "Run Ansible playbook to install Kubernetes"
 run_on_node "${NODE_NAME}1" "
