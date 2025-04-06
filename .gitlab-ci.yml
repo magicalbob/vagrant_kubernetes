@@ -5,10 +5,8 @@
     - sudo chmod 600 ~/.ssh/the_way
 
 stages:
- - destroy
- - setup
- - configure
- - validate
+ - setup_cluster
+ - validate_cluster
  - restore_cluster
  - terraform_apply
  - Make_Proxmox_K8S
@@ -17,58 +15,30 @@ variables:
   SETUP_ATTEMPTS: 0
   MAX_SETUP_ATTEMPTS: 2
 
-destroy_job:
-  extends: .ssh_setup
+# Generate child pipeline configuration dynamically
+setup_cluster:
+  stage: setup_cluster
   image: docker.ellisbs.co.uk:5190/ubuntu:24.04
-  stage: destroy
   tags:
     - linux
   script:
-    - sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET "if [ -f Documents/src/test/Vagrantfile ]; then echo \"Vagrantfile found. Proceeding with destruction...\"; cd Documents/src/test && vagrant destroy -f; else echo \"No Vagrantfile found. Exiting gracefully.\"; exit 0; fi"
-
-up_only_job:
-  extends: .ssh_setup
-  image: docker.ellisbs.co.uk:5190/ubuntu:24.04
-  stage: setup
-  tags:
-    - linux
-  timeout: 3h
-  retry:
-    max: 2
-    when:
-      - script_failure
-      - api_failure
-  script:
-    - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T Make_Kubernetes.sh $TEST_TARGET:Documents/src/test/Make_Kubernetes.sh
-    - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T config.json $TEST_TARGET:Documents/src/test/config.json
-    - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T Vagrantfile.template $TEST_TARGET:Documents/src/test/Vagrantfile.template
-    - sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET "cd Documents/src/test && ./Make_Kubernetes.sh --location vagrant UP_ONLY"
-    - echo $SETUP_ATTEMPTS > setup_attempts.txt
+    - echo "Generating child pipeline configuration"
+    - echo "include:" > child-pipeline.yml
+    - echo "  - remote: 'setup-cluster.yml'" >> child-pipeline.yml
+    - cat child-pipeline.yml
   artifacts:
     paths:
-      - setup_attempts.txt
-
-skip_up_job:
-  extends: .ssh_setup
-  image: docker.ellisbs.co.uk:5190/ubuntu:24.04
-  stage: configure
-  tags:
-    - linux
-  timeout: 3h
-  script:
-    - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T hosts.template $TEST_TARGET:Documents/src/test/hosts.template
-    - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T addons.yml $TEST_TARGET:Documents/src/test/addons.yml
-    - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T build_inventory.template $TEST_TARGET:Documents/src/test/build_inventory.template
-    - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T systemd/service-monitor.service $TEST_TARGET:Documents/src/test/service-monitor.service
-    - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T systemd/service-monitor.sh $TEST_TARGET:Documents/src/test/service-monitor.sh
-    - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T ansible.cfg $TEST_TARGET:Documents/src/test/ansible.cfg
-    - echo "sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET \"export OPENAI_API_KEY=$OPENAI_API_KEY && cd Documents/src/test && ./Make_Kubernetes.sh --location vagrant SKIP_UP\"" > /tmp/dynamics_action.sh
-    - sh /tmp/dynamics_action.sh
+      - child-pipeline.yml
+  trigger:
+    include:
+      - artifact: child-pipeline.yml
+        job: setup_cluster
+    strategy: depend
 
 validate_cluster:
   extends: .ssh_setup
   image: docker.ellisbs.co.uk:5190/ubuntu:24.04
-  stage: validate
+  stage: validate_cluster
   tags:
     - linux
   timeout: 1h
@@ -78,13 +48,17 @@ validate_cluster:
     - sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET "cd Documents/src/test && NODE_NAME=$(jq -r .node_name config.json)1 && vagrant ssh -c \"ruby /vagrant/validate_cluster.rb|tee /vagrant/validate_cluster.log\" $NODE_NAME"
     - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET:Documents/src/test/validate_cluster.log validate_cluster.log
     - cat validate_cluster.log
-    - if grep -q "Kubernetes cluster validation passed successfully!" validate_cluster.log; then echo "Validation passed!"; else echo "Validation failed!"; CURRENT_ATTEMPTS=$(cat setup_attempts.txt); if [ $CURRENT_ATTEMPTS -lt $MAX_SETUP_ATTEMPTS ]; then echo "Will retry on next pipeline run"; echo $((CURRENT_ATTEMPTS+1)) > setup_attempts.txt; echo "Triggering new pipeline"; curl -s --request POST --form "token=$CI_JOB_TOKEN" --form "ref=$CI_COMMIT_REF_NAME" --form "variables[SETUP_ATTEMPTS]=$((CURRENT_ATTEMPTS+1))" "https://gitlab.ellisbs.co.uk/api/v4/projects/$CI_PROJECT_ID/trigger/pipeline"; echo "Exiting with failure to stop current pipeline"; exit 1; else echo "Max attempts reached"; exit 1; fi; fi
+    - echo $SETUP_ATTEMPTS > setup_attempts.txt
+    - if grep -q "Kubernetes cluster validation passed successfully!" validate_cluster.log; then echo "Validation passed!"; else echo "Validation failed!"; CURRENT_ATTEMPTS=$(cat setup_attempts.txt); if [ $CURRENT_ATTEMPTS -lt $MAX_SETUP_ATTEMPTS ]; then NEW_ATTEMPTS=$((CURRENT_ATTEMPTS+1)); echo "Will retry for attempt $NEW_ATTEMPTS"; exit 1; else echo "Max attempts reached"; exit 1; fi; fi
   artifacts:
     paths:
       - validate_cluster.log
       - setup_attempts.txt
-  dependencies:
-    - up_only_job
+  retry:
+    max: $MAX_SETUP_ATTEMPTS
+    when:
+      - script_failure
+      - runner_system_failure
 
 restore_cluster:
   extends: .ssh_setup
