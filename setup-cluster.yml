@@ -16,14 +16,7 @@ destroy_job:
   tags:
     - linux
   script:
-    - sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET '
-        if [ -f Documents/src/test/Vagrantfile ]; then
-          echo "Vagrantfile found. Proceeding with destruction...";
-          cd Documents/src/test && vagrant destroy -f;
-        else
-          echo "No Vagrantfile found. Exiting gracefully.";
-          exit 0;
-        fi'
+    - sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET "if [ -f Documents/src/test/Vagrantfile ]; then echo \"Vagrantfile found. Proceeding with destruction...\"; cd Documents/src/test && vagrant destroy -f; else echo \"No Vagrantfile found. Exiting gracefully.\"; exit 0; fi"
 
 up_only_job:
   extends: .ssh_setup
@@ -41,7 +34,7 @@ up_only_job:
     - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T Make_Kubernetes.sh $TEST_TARGET:Documents/src/test/Make_Kubernetes.sh
     - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T config.json $TEST_TARGET:Documents/src/test/config.json
     - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T Vagrantfile.template $TEST_TARGET:Documents/src/test/Vagrantfile.template
-    - sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET 'cd Documents/src/test && ./Make_Kubernetes.sh --location vagrant UP_ONLY'
+    - sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET "cd Documents/src/test && ./Make_Kubernetes.sh --location vagrant UP_ONLY"
 
 skip_up_job:
   extends: .ssh_setup

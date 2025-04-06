@@ -1,10 +1,2 @@
 include:
   - local: 'setup-cluster.yml'
-
-# Add any additional configuration specific to the child pipeline
-variables:
-  PARENT_PIPELINE_ID: "$PARENT_PIPELINE_ID"
-  SETUP_ATTEMPTS: "$SETUP_ATTEMPTS"
-  THE_WAY: "$THE_WAY"
-  TEST_TARGET: "$TEST_TARGET"
-  OPENAI_API_KEY: "$OPENAI_API_KEY"
