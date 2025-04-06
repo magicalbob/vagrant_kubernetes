@@ -5,6 +5,204 @@
     - sudo chmod 600 ~/.ssh/the_way
 
 stages:
+ - cluster_setup
+ - validate_cluster
+ - restore_cluster
+ - terraform_apply
+ - Make_Proxmox_K8S
+
+variables:
+  SETUP_ATTEMPTS: 0
+  MAX_SETUP_ATTEMPTS: 2
+
+# This job triggers the child pipeline for cluster setup
+cluster_setup:
+  stage: cluster_setup
+  image: docker.ellisbs.co.uk:5190/ubuntu:24.04
+  tags:
+    - linux
+  script:
+    - apt-get update && apt-get install -y jq curl
+    # Store the current attempt number in a file
+    - echo $SETUP_ATTEMPTS > setup_attempts.txt
+    - echo "Running cluster setup attempt $(cat setup_attempts.txt)"
+    # Trigger child pipeline
+    - |
+      PIPELINE_ID=$(curl --request POST \
+        --form "token=$CI_JOB_TOKEN" \
+        --form "ref=$CI_COMMIT_REF_NAME" \
+        --form "variables[PARENT_PIPELINE_ID]=$CI_PIPELINE_ID" \
+        --form "variables[SETUP_ATTEMPTS]=$(cat setup_attempts.txt)" \
+        --form "variables[THE_WAY]=$THE_WAY" \
+        --form "variables[TEST_TARGET]=$TEST_TARGET" \
+        --form "variables[OPENAI_API_KEY]=$OPENAI_API_KEY" \
+        "https://gitlab.ellisbs.co.uk/api/v4/projects/$CI_PROJECT_ID/trigger/pipeline" | jq -r '.id')
+    - echo "Triggered child pipeline with ID: $PIPELINE_ID"
+    # Wait for child pipeline to complete
+    - |
+      while true; do
+        STATUS=$(curl --header "PRIVATE-TOKEN: $MY_PROJECT_TOKEN" "https://gitlab.ellisbs.co.uk/api/v4/projects/$CI_PROJECT_ID/pipelines/$PIPELINE_ID" | jq -r '.status')
+        echo "Child pipeline status: $STATUS"
+        if [[ "$STATUS" == "success" ]]; then
+          echo "Child pipeline completed successfully"
+          break
+        elif [[ "$STATUS" == "failed" || "$STATUS" == "canceled" ]]; then
+          echo "Child pipeline failed or was canceled"
+          exit 1
+        fi
+        sleep 30
+      done
+  artifacts:
+    paths:
+      - setup_attempts.txt
+
+validate_cluster:
+  extends: .ssh_setup
+  image: docker.ellisbs.co.uk:5190/ubuntu:24.04
+  stage: validate_cluster
+  tags:
+    - linux
+  timeout: 1h
+  script:
+    # output config.json to log for ref
+    - cat config.json
+    # Copy validation script and config.json to the target machine
+    - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T validate_cluster.rb config.json $TEST_TARGET:Documents/src/test/
+    # Execute the validation script using ruby, reading node_name from config.json
+    - |
+      sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET '
+        cd Documents/src/test && 
+        NODE_NAME=$(jq -r .node_name config.json)1 &&
+        vagrant ssh -c "ruby /vagrant/validate_cluster.rb|tee /vagrant/validate_cluster.log" $NODE_NAME
+      '
+    # Copy validation log back from the target machine to runner
+    - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET:Documents/src/test/validate_cluster.log validate_cluster.log
+    # Check log for fail
+    - |
+      if grep "Kubernetes cluster validation passed successfully!" validate_cluster.log ; then 
+        echo "Kubernetes cluster validation passed successfully!"
+      else 
+        echo "Kubernetes cluster validation failed!"
+        # Check if we should retry the setup
+        CURRENT_ATTEMPTS=$(cat setup_attempts.txt)
+        if [ $CURRENT_ATTEMPTS -lt $MAX_SETUP_ATTEMPTS ]; then
+          echo "Retrying cluster setup, attempt $((CURRENT_ATTEMPTS+1))..."
+          # Increment attempt counter
+          echo $((CURRENT_ATTEMPTS+1)) > setup_attempts.txt
+          # Trigger a new pipeline
+          curl --request POST \
+            --form "token=$CI_JOB_TOKEN" \
+            --form "ref=$CI_COMMIT_REF_NAME" \
+            --form "variables[RETRY_PIPELINE]=true" \
+            --form "variables[SETUP_ATTEMPTS]=$((CURRENT_ATTEMPTS+1))" \
+            "https://gitlab.ellisbs.co.uk/api/v4/projects/$CI_PROJECT_ID/trigger/pipeline"
+          exit 1
+        else
+          echo "Max retry attempts reached ($MAX_SETUP_ATTEMPTS). Failing the pipeline."
+          exit 1
+        fi
+      fi
+  artifacts:
+    paths:
+      - validate_cluster.log
+      - setup_attempts.txt
+  dependencies:
+    - cluster_setup
+
+restore_cluster:
+  extends: .ssh_setup
+  retry:
+    max: 2
+    when:
+      - script_failure
+      - api_failure
+  image: docker.ellisbs.co.uk:5190/ubuntu:24.04
+  stage: restore_cluster
+  tags:
+    - linux
+  timeout: 1h
+  script:
+    # Copy the backup restore script to the target
+    - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T Backup_Restore.sh config.json $TEST_TARGET:Documents/src/test/
+    # Temp install jq, should be in runner image build
+    - sudo apt-get update && sudo apt-get install -y jq
+    # Get name of first node
+    - export NODE_NAME="$(jq -r '.node_name' config.json)1"
+    # Make directory for postgres pv
+    - sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET "cd Documents/src/test/ && vagrant ssh -c 'ssh -o StrictHostKeyChecking=no pm2  mkdir -p /home/vagrant/k8s_postgres/postgresql-data' $NODE_NAME"
+    # Execute backup restore script
+    - sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET "cd Documents/src/test/ && chmod +x Backup_Restore.sh && vagrant ssh -c 'cd /vagrant && ./Backup_Restore.sh' $NODE_NAME"
+  dependencies:
+    - validate_cluster
+  allow_failure: true
+
+terraform_apply:
+  retry:
+    max: 2
+    when:
+      - script_failure
+      - api_failure
+  image: docker.ellisbs.co.uk:5190/ubuntu:24.04
+  stage: terraform_apply
+  tags:
+    - linux
+  timeout: 1h
+  script:
+    - if ! curl -f http://$NODE1:8006 > /dev/null 2>&1; then
+        echo "Sorry proxmox not available";
+        exit 0;
+      fi
+    - apt-get update
+    - DEBIAN_FRONTEND=noninteractive apt-get install -y tzdata docker-compose
+    - cd terraform
+    - echo "MY_PROJECT_TOKEN=${MY_PROJECT_TOKEN}" >> .env
+    - echo "CI_JOB_TOKEN=${CI_JOB_TOKEN}" >> .env
+    - echo "CI_SERVER_HOST=${CI_SERVER_HOST}" >> .env
+    - echo "CI_PROJECT_PATH=${CI_PROJECT_PATH}" >> .env
+    - echo "CI_COMMIT_SHA=${CI_COMMIT_SHA}" >> .env
+    - docker-compose up -d
+    - docker-compose exec -T opentofu sh -c "
+        cd /opt/pwd &&
+        rm -rf vagrant_kubernetes &&
+        export CI_JOB_TOKEN=${MY_PROJECT_TOKEN}  &&
+        export CI_SERVER_HOST=gitlab.ellisbs.co.uk  &&
+        export CI_PROJECT_PATH=ian/vagrant_kubernetes  &&
+        export CI_COMMIT_SHA=${CI_COMMIT_SHA}  &&
+        git config --global http.sslVerify false  &&
+        git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.ellisbs.co.uk/${CI_PROJECT_PATH}.git  &&
+        cd vagrant_kubernetes  &&
+        git checkout ${CI_COMMIT_SHA}  &&
+        cd terraform  &&
+        tofu init  &&
+        tofu validate &&
+        tofu apply --auto-approve
+      "
+
+Make_Proxmox_K8S:
+  retry:
+    max: 2
+    when:
+      - script_failure
+      - api_failure
+  image: docker.ellisbs.co.uk:5190/ubuntu:24.04
+  stage: Make_Proxmox_K8S
+  tags:
+    - linux
+  timeout: 1h
+  script:
+    - if ! curl -f http://$NODE1:8006 > /dev/null 2>&1; then
+        echo "Sorry proxmox not available";
+        exit 0;
+      fi
+    - apt-get update
+    - apt-get install -y jq
+    - ./make_proxmox_k8s.sh.ssh_setup:
+  before_script:
+    - sudo mkdir -p ~/.ssh
+    - echo "$THE_WAY" | base64 --decode | sudo tee ~/.ssh/the_way > /dev/null
+    - sudo chmod 600 ~/.ssh/the_way
+
+stages:
  - destroy_job
  - up_only_job
  - skip_up_job
