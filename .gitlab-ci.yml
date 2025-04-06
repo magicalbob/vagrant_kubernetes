@@ -15,25 +15,16 @@ variables:
   SETUP_ATTEMPTS: 0
   MAX_SETUP_ATTEMPTS: 2
 
-# Generate child pipeline configuration dynamically
+# Trigger child pipeline for cluster setup
 setup_cluster:
   stage: setup_cluster
-  image: docker.ellisbs.co.uk:5190/ubuntu:24.04
-  tags:
-    - linux
-  script:
-    - echo "Generating child pipeline configuration"
-    - echo "include:" > child-pipeline.yml
-    - echo "  - remote: 'setup-cluster.yml'" >> child-pipeline.yml
-    - cat child-pipeline.yml
-  artifacts:
-    paths:
-      - child-pipeline.yml
   trigger:
-    include:
-      - artifact: child-pipeline.yml
-        job: setup_cluster
+    include: setup-cluster.yml
     strategy: depend
+  variables:
+    THE_WAY: $THE_WAY
+    TEST_TARGET: $TEST_TARGET
+    OPENAI_API_KEY: $OPENAI_API_KEY
 
 validate_cluster:
   extends: .ssh_setup
@@ -55,7 +46,7 @@ validate_cluster:
       - validate_cluster.log
       - setup_attempts.txt
   retry:
-    max: $MAX_SETUP_ATTEMPTS
+    max: 2
     when:
       - script_failure
       - runner_system_failure
