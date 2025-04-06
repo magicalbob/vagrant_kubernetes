@@ -5,8 +5,10 @@
     - sudo chmod 600 ~/.ssh/the_way
 
 stages:
- - cluster_setup
- - validate_cluster
+ - destroy
+ - setup
+ - configure
+ - validate
  - restore_cluster
  - terraform_apply
  - Make_Proxmox_K8S
@@ -15,46 +17,74 @@ variables:
   SETUP_ATTEMPTS: 0
   MAX_SETUP_ATTEMPTS: 2
 
-# This job triggers the child pipeline for cluster setup
-cluster_setup:
-  stage: cluster_setup
+destroy_job:
+  extends: .ssh_setup
   image: docker.ellisbs.co.uk:5190/ubuntu:24.04
+  stage: destroy
   tags:
     - linux
   script:
-    - apt-get update
-    - apt-get install -y jq curl
+    - sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET "if [ -f Documents/src/test/Vagrantfile ]; then echo \"Vagrantfile found. Proceeding with destruction...\"; cd Documents/src/test && vagrant destroy -f; else echo \"No Vagrantfile found. Exiting gracefully.\"; exit 0; fi"
+
+up_only_job:
+  extends: .ssh_setup
+  image: docker.ellisbs.co.uk:5190/ubuntu:24.04
+  stage: setup
+  tags:
+    - linux
+  timeout: 3h
+  retry:
+    max: 2
+    when:
+      - script_failure
+      - api_failure
+  script:
+    - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T Make_Kubernetes.sh $TEST_TARGET:Documents/src/test/Make_Kubernetes.sh
+    - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T config.json $TEST_TARGET:Documents/src/test/config.json
+    - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T Vagrantfile.template $TEST_TARGET:Documents/src/test/Vagrantfile.template
+    - sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET "cd Documents/src/test && ./Make_Kubernetes.sh --location vagrant UP_ONLY"
     - echo $SETUP_ATTEMPTS > setup_attempts.txt
-    - echo "Running cluster setup attempt $(cat setup_attempts.txt)"
-    - "curl --request POST --form \"token=$CI_JOB_TOKEN\" --form \"ref=$CI_COMMIT_REF_NAME\" --form \"variables[PARENT_PIPELINE_ID]=$CI_PIPELINE_ID\" --form \"variables[SETUP_ATTEMPTS]=$(cat setup_attempts.txt)\" --form \"variables[THE_WAY]=$THE_WAY\" --form \"variables[TEST_TARGET]=$TEST_TARGET\" --form \"variables[OPENAI_API_KEY]=$OPENAI_API_KEY\" \"https://gitlab.ellisbs.co.uk/api/v4/projects/$CI_PROJECT_ID/trigger/pipeline\" > pipeline_response.json"
-    - "PIPELINE_ID=$(cat pipeline_response.json | jq -r '.id')"
-    - echo "Triggered child pipeline with ID: $PIPELINE_ID"
-    - echo $PIPELINE_ID > pipeline_id.txt
-    - "bash -c \"while true; do curl --header \\\"PRIVATE-TOKEN: $MY_PROJECT_TOKEN\\\" \\\"https://gitlab.ellisbs.co.uk/api/v4/projects/$CI_PROJECT_ID/pipelines/$PIPELINE_ID\\\" > pipeline_status.json; STATUS=$(cat pipeline_status.json | jq -r '.status'); echo \\\"Child pipeline status: $STATUS\\\"; if [[ \\\"$STATUS\\\" == \\\"success\\\" ]]; then echo \\\"Child pipeline completed successfully\\\"; break; elif [[ \\\"$STATUS\\\" == \\\"failed\\\" || \\\"$STATUS\\\" == \\\"canceled\\\" ]]; then echo \\\"Child pipeline failed or was canceled\\\"; exit 1; fi; sleep 30; done\""
   artifacts:
     paths:
       - setup_attempts.txt
-      - pipeline_id.txt
+
+skip_up_job:
+  extends: .ssh_setup
+  image: docker.ellisbs.co.uk:5190/ubuntu:24.04
+  stage: configure
+  tags:
+    - linux
+  timeout: 3h
+  script:
+    - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T hosts.template $TEST_TARGET:Documents/src/test/hosts.template
+    - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T addons.yml $TEST_TARGET:Documents/src/test/addons.yml
+    - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T build_inventory.template $TEST_TARGET:Documents/src/test/build_inventory.template
+    - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T systemd/service-monitor.service $TEST_TARGET:Documents/src/test/service-monitor.service
+    - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T systemd/service-monitor.sh $TEST_TARGET:Documents/src/test/service-monitor.sh
+    - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T ansible.cfg $TEST_TARGET:Documents/src/test/ansible.cfg
+    - echo "sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET \"export OPENAI_API_KEY=$OPENAI_API_KEY && cd Documents/src/test && ./Make_Kubernetes.sh --location vagrant SKIP_UP\"" > /tmp/dynamics_action.sh
+    - sh /tmp/dynamics_action.sh
 
 validate_cluster:
   extends: .ssh_setup
   image: docker.ellisbs.co.uk:5190/ubuntu:24.04
-  stage: validate_cluster
+  stage: validate
   tags:
     - linux
   timeout: 1h
   script:
     - cat config.json
     - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T validate_cluster.rb config.json $TEST_TARGET:Documents/src/test/
-    - "sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET 'cd Documents/src/test && NODE_NAME=$(jq -r .node_name config.json)1 && vagrant ssh -c \"ruby /vagrant/validate_cluster.rb|tee /vagrant/validate_cluster.log\" $NODE_NAME'"
+    - sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET "cd Documents/src/test && NODE_NAME=$(jq -r .node_name config.json)1 && vagrant ssh -c \"ruby /vagrant/validate_cluster.rb|tee /vagrant/validate_cluster.log\" $NODE_NAME"
     - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET:Documents/src/test/validate_cluster.log validate_cluster.log
-    - grep "Kubernetes cluster validation passed successfully!" validate_cluster.log || (CURRENT_ATTEMPTS=$(cat setup_attempts.txt); if [ $CURRENT_ATTEMPTS -lt $MAX_SETUP_ATTEMPTS ]; then echo "Retrying cluster setup, attempt $((CURRENT_ATTEMPTS+1))..."; echo $((CURRENT_ATTEMPTS+1)) > setup_attempts.txt; curl --request POST --form "token=$CI_JOB_TOKEN" --form "ref=$CI_COMMIT_REF_NAME" --form "variables[RETRY_PIPELINE]=true" --form "variables[SETUP_ATTEMPTS]=$((CURRENT_ATTEMPTS+1))" "https://gitlab.ellisbs.co.uk/api/v4/projects/$CI_PROJECT_ID/trigger/pipeline"; exit 1; else echo "Max retry attempts reached ($MAX_SETUP_ATTEMPTS). Failing the pipeline."; exit 1; fi)
+    - cat validate_cluster.log
+    - if grep -q "Kubernetes cluster validation passed successfully!" validate_cluster.log; then echo "Validation passed!"; else echo "Validation failed!"; CURRENT_ATTEMPTS=$(cat setup_attempts.txt); if [ $CURRENT_ATTEMPTS -lt $MAX_SETUP_ATTEMPTS ]; then echo "Will retry on next pipeline run"; echo $((CURRENT_ATTEMPTS+1)) > setup_attempts.txt; echo "Triggering new pipeline"; curl -s --request POST --form "token=$CI_JOB_TOKEN" --form "ref=$CI_COMMIT_REF_NAME" --form "variables[SETUP_ATTEMPTS]=$((CURRENT_ATTEMPTS+1))" "https://gitlab.ellisbs.co.uk/api/v4/projects/$CI_PROJECT_ID/trigger/pipeline"; echo "Exiting with failure to stop current pipeline"; exit 1; else echo "Max attempts reached"; exit 1; fi; fi
   artifacts:
     paths:
       - validate_cluster.log
       - setup_attempts.txt
   dependencies:
-    - cluster_setup
+    - up_only_job
 
 restore_cluster:
   extends: .ssh_setup
@@ -69,15 +99,10 @@ restore_cluster:
     - linux
   timeout: 1h
   script:
-    # Copy the backup restore script to the target
     - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T Backup_Restore.sh config.json $TEST_TARGET:Documents/src/test/
-    # Temp install jq, should be in runner image build
     - sudo apt-get update && sudo apt-get install -y jq
-    # Get name of first node
     - export NODE_NAME="$(jq -r '.node_name' config.json)1"
-    # Make directory for postgres pv
     - sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET "cd Documents/src/test/ && vagrant ssh -c 'ssh -o StrictHostKeyChecking=no pm2  mkdir -p /home/vagrant/k8s_postgres/postgresql-data' $NODE_NAME"
-    # Execute backup restore script
     - sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET "cd Documents/src/test/ && chmod +x Backup_Restore.sh && vagrant ssh -c 'cd /vagrant && ./Backup_Restore.sh' $NODE_NAME"
   dependencies:
     - validate_cluster
@@ -95,10 +120,7 @@ terraform_apply:
     - linux
   timeout: 1h
   script:
-    - if ! curl -f http://$NODE1:8006 > /dev/null 2>&1; then
-        echo "Sorry proxmox not available";
-        exit 0;
-      fi
+    - if ! curl -f http://$NODE1:8006 > /dev/null 2>&1; then echo "Sorry proxmox not available"; exit 0; fi
     - apt-get update
     - DEBIAN_FRONTEND=noninteractive apt-get install -y tzdata docker-compose
     - cd terraform
@@ -108,22 +130,7 @@ terraform_apply:
     - echo "CI_PROJECT_PATH=${CI_PROJECT_PATH}" >> .env
     - echo "CI_COMMIT_SHA=${CI_COMMIT_SHA}" >> .env
     - docker-compose up -d
-    - docker-compose exec -T opentofu sh -c "
-        cd /opt/pwd &&
-        rm -rf vagrant_kubernetes &&
-        export CI_JOB_TOKEN=${MY_PROJECT_TOKEN}  &&
-        export CI_SERVER_HOST=gitlab.ellisbs.co.uk  &&
-        export CI_PROJECT_PATH=ian/vagrant_kubernetes  &&
-        export CI_COMMIT_SHA=${CI_COMMIT_SHA}  &&
-        git config --global http.sslVerify false  &&
-        git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.ellisbs.co.uk/${CI_PROJECT_PATH}.git  &&
-        cd vagrant_kubernetes  &&
-        git checkout ${CI_COMMIT_SHA}  &&
-        cd terraform  &&
-        tofu init  &&
-        tofu validate &&
-        tofu apply --auto-approve
-      "
+    - docker-compose exec -T opentofu sh -c "cd /opt/pwd && rm -rf vagrant_kubernetes && export CI_JOB_TOKEN=${MY_PROJECT_TOKEN} && export CI_SERVER_HOST=gitlab.ellisbs.co.uk && export CI_PROJECT_PATH=ian/vagrant_kubernetes && export CI_COMMIT_SHA=${CI_COMMIT_SHA} && git config --global http.sslVerify false && git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.ellisbs.co.uk/${CI_PROJECT_PATH}.git && cd vagrant_kubernetes && git checkout ${CI_COMMIT_SHA} && cd terraform && tofu init && tofu validate && tofu apply --auto-approve"
 
 Make_Proxmox_K8S:
   retry:
@@ -137,10 +144,7 @@ Make_Proxmox_K8S:
     - linux
   timeout: 1h
   script:
-    - if ! curl -f http://$NODE1:8006 > /dev/null 2>&1; then
-        echo "Sorry proxmox not available";
-        exit 0;
-      fi
+    - if ! curl -f http://$NODE1:8006 > /dev/null 2>&1; then echo "Sorry proxmox not available"; exit 0; fi
     - apt-get update
     - apt-get install -y jq
     - ./make_proxmox_k8s.sh
