@@ -35,9 +35,9 @@ validate_cluster:
   timeout: 1h
   script:
     - cat config.json
-    - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T validate_cluster.rb config.json $TEST_TARGET:Documents/src/test/
-    - sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET "cd Documents/src/test && NODE_NAME=$(jq -r .node_name config.json)1 && vagrant ssh -c \"ruby /vagrant/validate_cluster.rb|tee /vagrant/validate_cluster.log\" $NODE_NAME"
-    - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET:Documents/src/test/validate_cluster.log validate_cluster.log
+    - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T validate_cluster.rb config.json run_validation.sh $TEST_TARGET:Documents/src/test/
+    - sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET "cd Documents/src/test && chmod +x run_validation.sh && ./run_validation.sh"
+    - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET:Documents/src/test/validate_cluster.log validate_cluster.log || echo "Could not copy validation log - may not exist"
     - cat validate_cluster.log
     - echo $SETUP_ATTEMPTS > setup_attempts.txt
     - if grep -q "Kubernetes cluster validation passed successfully!" validate_cluster.log; then echo "Validation passed!"; else echo "Validation failed!"; CURRENT_ATTEMPTS=$(cat setup_attempts.txt); if [ $CURRENT_ATTEMPTS -lt $MAX_SETUP_ATTEMPTS ]; then NEW_ATTEMPTS=$((CURRENT_ATTEMPTS+1)); echo "Will retry for attempt $NEW_ATTEMPTS"; exit 1; else echo "Max attempts reached"; exit 1; fi; fi
