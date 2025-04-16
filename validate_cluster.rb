@@ -100,50 +100,69 @@ class ClusterValidator
 
   def validate_dns_resolution
     puts "✅ Validating DNS resolution..."
-  
-    # Specifically target Flannel pods for DNS testing
+    
+    # Create a temporary test pod with DNS tools
+    test_pod_name = "dns-test-#{Time.now.to_i}"
+    test_pod_yaml = <<~YAML
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: #{test_pod_name}
+      spec:
+        containers:
+        - name: dns-test
+          image: busybox:1.28
+          command:
+          - sleep
+          - "60"
+        restartPolicy: Never
+    YAML
+    
     begin
-      flannel_pods = JSON.parse(run_command("kubectl get pods -n kube-system -l app=flannel -o json"))
-      if flannel_pods['items'].empty?
-        # Try alternative label selectors if the first one doesn't work
-        flannel_pods = JSON.parse(run_command("kubectl get pods -n kube-system -l app.kubernetes.io/name=flannel -o json"))
+      # Create the test pod
+      run_command("echo '#{test_pod_yaml}' | kubectl apply -f -")
+      puts "Created temporary test pod #{test_pod_name}"
+      
+      # Wait for the pod to be ready (up to 30 seconds)
+      ready = false
+      30.times do |i|
+        pod_status = run_command("kubectl get pod #{test_pod_name} -o jsonpath='{.status.phase}' 2>/dev/null || echo 'Pending'")
+        if pod_status == "Running"
+          ready = true
+          break
+        end
+        puts "Waiting for test pod to be ready (#{i+1}/30)..." if (i+1) % 5 == 0
+        sleep 1
       end
-  
-      if flannel_pods['items'].empty?
-        # If we still can't find any, try finding pods with "flannel" in their name
-        pod_list = JSON.parse(run_command("kubectl get pods -n kube-system -o json"))
-        flannel_pods = {"items" => pod_list['items'].select { |pod| pod['metadata']['name'].include?('flannel') }}
+      
+      unless ready
+        raise "Test pod did not become ready in time"
       end
-  
-      if flannel_pods['items'].empty?
-        raise "No Flannel pods found for DNS testing!"
-      end
-  
-      # Find a running Flannel pod
-      test_pod = flannel_pods['items'].find { |pod| pod['status']['phase'] == 'Running' }
-      pod_name = test_pod['metadata']['name']
-      puts "Using Flannel pod #{pod_name} for DNS testing..."
-  
-      # We need to specify the container for multi-container pods
-      container_flag = ""
-      if test_pod['spec']['containers'].length > 1
-        container_flag = "-c kube-flannel"
-      end
-  
-      # Run nslookup from the Flannel pod
-      dns_command = "kubectl exec -n kube-system #{pod_name} #{container_flag} -- nslookup kubernetes.default.svc.cluster.local"
-      dns_test_output = run_command(dns_command)
-  
-      # Check for proper response with IP address
-      if dns_test_output.include?('Address:') && dns_test_output.include?('10.233.0.1')
+      
+      # Run the DNS test
+      dns_test_output = run_command("kubectl exec #{test_pod_name} -- nslookup kubernetes.default.svc.cluster.local")
+      puts dns_test_output
+      
+      # Check for successful DNS resolution - looking for either "Address:" or "Address 1:" 
+      # and checking for the Kubernetes service IP
+      if (dns_test_output.include?('Address:') || dns_test_output.include?('Address 1:')) && 
+         dns_test_output.include?('10.233.0.1') && 
+         !dns_test_output.include?('server can\'t find')
         puts "✅ DNS resolution test passed."
       else
-        puts dns_test_output
         raise "❌ DNS resolution test failed - incorrect response!"
       end
     rescue => e
       puts "DNS test error: #{e.message}"
       raise "❌ DNS resolution test failed!"
+    ensure
+      # Always clean up the test pod
+      begin
+        run_command("kubectl delete pod #{test_pod_name} --force --grace-period=0 2>/dev/null || true")
+        puts "Cleaned up temporary test pod"
+      rescue => cleanup_error
+        puts "Warning: Failed to clean up test pod: #{cleanup_error.message}"
+      end
     end
   end
 
