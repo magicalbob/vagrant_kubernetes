@@ -64,6 +64,44 @@ copy_to_node() {
     fi
 }
 
+copy_from_node() {
+    local src="$1"
+    local dest="$2"
+    local node="$3"
+    if [[ "$LOCATION" == "vagrant" ]]; then
+        vagrant ssh "$node" -c "cp -v '$src' '/vagrant/$dest'"
+    else
+        scp -o StrictHostKeyChecking=no "${node}:$src" "${dest}"
+    fi
+}
+
+# Retry function for commands
+retry_command() {
+    local max_attempts=$1
+    local delay=$2
+    local command=$3
+    local node=$4
+    local attempt=1
+    
+    while [ $attempt -le $max_attempts ]; do
+        echo "Executing command: $command (attempt $attempt of $max_attempts)"
+        if run_on_node "$node" "$command"; then
+            echo "Command succeeded on attempt $attempt"
+            return 0
+        else
+            echo "Command failed on attempt $attempt"
+            if [ $attempt -lt $max_attempts ]; then
+                echo "Retrying in $delay seconds..."
+                sleep $delay
+            fi
+            attempt=$((attempt+1))
+        fi
+    done
+    
+    echo "Command failed after $max_attempts attempts"
+    return 1
+}
+
 # Common configuration
 cp ~/.vagrant.d/insecure_private_key ./insecure_private_key
 
@@ -74,6 +112,7 @@ TOTAL_NODES=$((CONTROL_NODES + WORKER_NODES))
 RAM_SIZE=$(jq -r '.ram_size' config.json)
 CPU_COUNT=$(jq -r '.cpu_count' config.json)
 PUB_NET=$(jq -r '.pub_net' config.json)
+START_RANGE=$(jq -r '.start_range' config.json)
 KUBE_VERSION=$(jq -r '.kube_version' config.json)
 KUBESPRAY_VERSION=$(jq -r '.kubespray_version' config.json)
 NODE_NAME=$(jq -r '.node_name' config.json)
@@ -82,9 +121,8 @@ BOX_NAME=$(jq -r '.box_name // "bento/ubuntu-22.04"' config.json)
 DISK_SIZE=$(jq -r '.disk_size // "51200"' config.json)
 MAC_ADDRESS=$(jq -r '.mac_address // "08:00:aa:aa:aa:aa" | gsub(":"; "")' config.json)
 
-
 # Export variables
-export CONTROL_NODES WORKER_NODES TOTAL_NODES RAM_SIZE CPU_COUNT PUB_NET KUBE_VERSION KUBESPRAY_VERSION NODE_NAME KUBE_NETWORK_PLUGIN BOX_NAME DISK_SIZE MAC_ADDRESS
+export CONTROL_NODES WORKER_NODES TOTAL_NODES RAM_SIZE CPU_COUNT PUB_NET START_RANGE KUBE_VERSION KUBESPRAY_VERSION NODE_NAME KUBE_NETWORK_PLUGIN BOX_NAME DISK_SIZE MAC_ADDRESS
 
 # Vagrant-specific setup
 if [[ "$LOCATION" == "vagrant" ]]; then
@@ -110,23 +148,81 @@ if [[ "$LOCATION" == "vagrant" ]]; then
         echo "Set up ssh between the nodes"
         ssh-keygen -y -f ./insecure_private_key > ./insecure_public_key
 
+        # Initial SSH setup on node1
+        copy_to_node "./insecure_private_key" "/home/vagrant/.ssh/id_rsa" "${NODE_NAME}1"
+        copy_to_node "./insecure_public_key" "/home/vagrant/.ssh/id_rsa.pub" "${NODE_NAME}1"
+        run_on_node "${NODE_NAME}1" 'cat /home/vagrant/.ssh/id_rsa.pub >> /home/vagrant/.ssh/authorized_keys'
+
+        # Create and write hosts file
+        echo "Create /etc/hosts file"
+        cp hosts.template hosts
         for i in $(seq 1 $TOTAL_NODES); do
-            figlet -c "Setting up SSH for ${NODE_NAME}$i"
+            echo ${PUB_NET}.${START_RANGE}${i} ${NODE_NAME}${i} >> hosts
+        done
+
+        # First ensure node1 can ping all other nodes
+        echo "Verify all nodes are pingable from node1"
+        for i in $(seq 2 $TOTAL_NODES); do
+            echo "Checking if ${NODE_NAME}$i is reachable from node1..."
+            PING_ATTEMPTS=0
+            MAX_PING_ATTEMPTS=30
+            PING_SUCCESS=0
+            
+            while [ $PING_ATTEMPTS -lt $MAX_PING_ATTEMPTS ] && [ $PING_SUCCESS -eq 0 ]; do
+                PING_ATTEMPTS=$((PING_ATTEMPTS+1))
+                if run_on_node "${NODE_NAME}1" "ping -c 1 ${PUB_NET}.${START_RANGE}${i}" > /dev/null 2>&1; then
+                    echo "${NODE_NAME}$i is reachable from node1"
+                    PING_SUCCESS=1
+                else
+                    echo "Waiting for ${NODE_NAME}$i to become reachable... (attempt $PING_ATTEMPTS/$MAX_PING_ATTEMPTS)"
+                    sleep 5
+                    
+                    # If we've tried 15 times, try to help the VM
+                    if [ $PING_ATTEMPTS -eq 15 ]; then
+                        echo "Attempting to reconfigure network on ${NODE_NAME}$i..."
+                        vagrant ssh -c "sudo dhclient -v" "${NODE_NAME}$i" || true
+                    fi
+                fi
+            done
+            
+            if [ $PING_SUCCESS -eq 0 ]; then
+                echo "Could not reach ${NODE_NAME}$i after $MAX_PING_ATTEMPTS attempts. Rebuilding VM..."
+                vagrant destroy -f "${NODE_NAME}$i"
+                vagrant up "${NODE_NAME}$i"
+                
+                # Check again after rebuild
+                if ! run_on_node "${NODE_NAME}1" "ping -c 1 ${PUB_NET}.${START_RANGE}${i}" > /dev/null 2>&1; then
+                    echo "ERROR: Still cannot reach ${NODE_NAME}$i after rebuilding. Please check network configuration."
+                    exit 1
+                fi
+            fi
+        done
+
+        # Copy hosts file to all nodes and apply basic configuration
+        for i in $(seq 1 $TOTAL_NODES); do
+            echo "Configuring basic network for ${NODE_NAME}$i"
+            # Try to copy hosts file multiple times in case of network issues
+            MAX_ATTEMPTS=3
+            for attempt in $(seq 1 $MAX_ATTEMPTS); do
+                if run_on_node "${NODE_NAME}$i" "sudo cp /vagrant/hosts /etc/hosts"; then
+                    echo "Successfully copied hosts file to ${NODE_NAME}$i"
+                    break
+                else
+                    echo "Failed to copy hosts file to ${NODE_NAME}$i (attempt $attempt of $MAX_ATTEMPTS)"
+                    [ $attempt -eq $MAX_ATTEMPTS ] && echo "WARNING: Could not copy hosts file to ${NODE_NAME}$i"
+                    sleep 5
+                fi
+            done
+        done
+
+        # Now set up SSH keys on all nodes
+        for i in $(seq 1 $TOTAL_NODES); do
+            echo "Setting up SSH for ${NODE_NAME}$i"
             copy_to_node "./insecure_private_key" "/home/vagrant/.ssh/id_rsa" "${NODE_NAME}$i"
             copy_to_node "./insecure_public_key" "/home/vagrant/.ssh/id_rsa.pub" "${NODE_NAME}$i"
             run_on_node "${NODE_NAME}$i" 'cat /home/vagrant/.ssh/id_rsa.pub >> /home/vagrant/.ssh/authorized_keys'
-            run_on_node "${NODE_NAME}1" "echo uptime|ssh -o StrictHostKeyChecking=no ${PUB_NET}.22${i}"
-        done
-
-        echo "Write /etc/hosts file"
-
-        cp hosts.template hosts
-        for i in $(seq 1 $TOTAL_NODES); do
-            echo ${PUB_NET}.22${i} ${NODE_NAME}${i} >> hosts
-        done
-
-        for i in $(seq 1 $TOTAL_NODES); do
-            run_on_node "${NODE_NAME}$i" "sudo cp /vagrant/hosts /etc/hosts"
+            # Try to connect from node1 to each node to establish SSH trust
+            run_on_node "${NODE_NAME}1" "ssh -o StrictHostKeyChecking=no ${NODE_NAME}$i 'echo SSH test from node1 to ${NODE_NAME}$i successful'"
         done
 
         echo "Verifying SSH connectivity between all nodes"
@@ -144,7 +240,7 @@ if [[ "$LOCATION" == "vagrant" ]]; then
 
                         # If this is the last attempt, try to remediate
                         if [ $attempt -eq $MAX_RETRY ]; then
-                            figlet -c "Attempting to remediate node ${NODE_NAME}$j..."
+                            echo "Attempting to remediate node ${NODE_NAME}$j..."
 
                             # First try restarting SSH on the problematic node
                             run_on_node "${NODE_NAME}$j" "sudo systemctl restart sshd" || true
@@ -154,14 +250,16 @@ if [[ "$LOCATION" == "vagrant" ]]; then
 
                             # Test again
                             if ! run_on_node "${NODE_NAME}$i" "ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 ${NODE_NAME}$j exit 2>/dev/null"; then
-                                figlet -c "Remediation failed. Rebuilding node ${NODE_NAME}$j..."
+                                echo "Remediation failed. Rebuilding node ${NODE_NAME}$j..."
                                 vagrant destroy -f "${NODE_NAME}$j"
                                 vagrant up "${NODE_NAME}$j"
 
                                 echo "Waiting 30 seconds for VM to fully initialize..."
                                 sleep 30
 
-                                # Set up SSH for the rebuilt node
+                                # Copy hosts file and set up SSH for the rebuilt node
+                                run_on_node "${NODE_NAME}$j" "sudo cp /vagrant/hosts /etc/hosts"
+                                copy_to_node "./insecure_private_key" "/home/vagrant/.ssh/id_rsa" "${NODE_NAME}$j"
                                 copy_to_node "./insecure_public_key" "/home/vagrant/.ssh/id_rsa.pub" "${NODE_NAME}$j"
                                 run_on_node "${NODE_NAME}$j" 'cat /home/vagrant/.ssh/id_rsa.pub >> /home/vagrant/.ssh/authorized_keys'
 
@@ -190,116 +288,68 @@ if [[ "$LOCATION" == "vagrant" ]]; then
 
         echo "Update and upgrade each node"
         for i in $(seq 1 $TOTAL_NODES); do
-	    figlet -c "Provisioning ${NODE_NAME}$i"
-            for cmd in \
-                'sudo pvresize /dev/sda3' \
-                'sudo lvextend -l +100%FREE /dev/ubuntu-vg/ubuntu-lv' \
-                'sudo resize2fs /dev/ubuntu-vg/ubuntu-lv' \
-                'echo "grub-pc grub-pc/install_devices multiselect /dev/sda" | sudo debconf-set-selections' \
-                'DEBIAN_FRONTEND=noninteractive sudo apt-get update' \
-                'DEBIAN_FRONTEND=noninteractive sudo apt-get upgrade -y' \
-                'sudo apt-get install -y net-tools ruby jq chrony' \
-                'sudo systemctl enable chrony --now' \
-                'sudo chronyc -a makestep'; do
-                run_on_node "${NODE_NAME}$i" "$cmd"
-            done
+            echo "Provisioning ${NODE_NAME}$i"
+            export i
+            envsubst < 01-netcfg.yaml.template > 01-netcfg.yaml
+            
+            # Apply core configuration in smaller batches with retries
+            echo "Resizing disks and partitions on ${NODE_NAME}$i"
+            retry_command 3 5 'sudo sgdisk -e /dev/sda' "${NODE_NAME}$i"
+            retry_command 3 5 'sudo parted -s /dev/sda resizepart 3 100%' "${NODE_NAME}$i"
+            retry_command 3 5 'sudo pvresize /dev/sda3' "${NODE_NAME}$i"
+            retry_command 3 5 'sudo lvextend -l +100%FREE /dev/ubuntu-vg/ubuntu-lv' "${NODE_NAME}$i"
+            retry_command 3 5 'sudo resize2fs /dev/ubuntu-vg/ubuntu-lv' "${NODE_NAME}$i"
+            
+            echo "Configuring network on ${NODE_NAME}$i"
+            retry_command 3 5 'sudo rm -rf /etc/netplan/*' "${NODE_NAME}$i"
+            copy_to_node "01-netcfg.yaml" "01-netcfg.yaml" "${NODE_NAME}$i"
+            retry_command 3 5 'sudo cp -v 01-netcfg.yaml /etc/netplan/01-netcfg.yaml' "${NODE_NAME}$i"
+            retry_command 3 5 'sudo chmod 600 /etc/netplan/01-netcfg.yaml' "${NODE_NAME}$i"
+            retry_command 3 5 'sudo chown root:root /etc/netplan/01-netcfg.yaml' "${NODE_NAME}$i"
+            retry_command 3 5 'sudo netplan generate' "${NODE_NAME}$i"
+            retry_command 3 5 'sudo netplan apply' "${NODE_NAME}$i"
+            retry_command 3 5 'echo "* * * * * sudo netplan generate && sudo netplan apply"|crontab -' "${NODE_NAME}$i"
+            
+            echo "Installing packages on ${NODE_NAME}$i"
+            retry_command 3 5 'echo "grub-pc grub-pc/install_devices multiselect /dev/sda" | sudo debconf-set-selections' "${NODE_NAME}$i"
+            retry_command 3 5 'DEBIAN_FRONTEND=noninteractive sudo apt-get update' "${NODE_NAME}$i"
+            retry_command 3 5 'DEBIAN_FRONTEND=noninteractive sudo apt-get upgrade -y' "${NODE_NAME}$i"
+            retry_command 3 5 'sudo apt-get install -y net-tools ruby jq chrony' "${NODE_NAME}$i"
+            retry_command 3 5 'sudo systemctl enable chrony --now' "${NODE_NAME}$i"
+            retry_command 3 5 'sudo chronyc -a makestep' "${NODE_NAME}$i"
+            
+            echo "Configuring DNS on ${NODE_NAME}$i"
+            retry_command 3 5 'sudo systemctl stop systemd-resolved' "${NODE_NAME}$i"
+            retry_command 3 5 'sudo systemctl disable systemd-resolved' "${NODE_NAME}$i"
+            retry_command 3 5 'sudo unlink /etc/resolv.conf' "${NODE_NAME}$i"
+            copy_to_node "resolv.conf" "resolv.conf" "${NODE_NAME}$i"
+            retry_command 3 5 'sudo cp -v resolv.conf /etc/resolv.conf' "${NODE_NAME}$i"
         done
 
-	for i in $(seq 1 $TOTAL_NODES); do
-	    figlet -c "Disable IPv6 ${NODE_NAME}$i"
-            run_on_node "${NODE_NAME}$i" "
+        for i in $(seq 1 $TOTAL_NODES); do
+            echo "Disable IPv6 ${NODE_NAME}$i"
+            retry_command 3 5 "
                 sudo sysctl -w net.ipv6.conf.all.disable_ipv6=1;
                 sudo sysctl -w net.ipv6.conf.default.disable_ipv6=1;
                 sudo sysctl -w net.ipv6.conf.lo.disable_ipv6=1;
                 echo 'net.ipv6.conf.all.disable_ipv6 = 1' | sudo tee -a /etc/sysctl.conf;
                 echo 'net.ipv6.conf.default.disable_ipv6 = 1' | sudo tee -a /etc/sysctl.conf;
                 echo 'net.ipv6.conf.lo.disable_ipv6 = 1' | sudo tee -a /etc/sysctl.conf;
-            "
+            " "${NODE_NAME}$i"
         done
 
-        echo "Set up ssh between the nodes"
-        copy_to_node "./insecure_private_key" "/home/vagrant/.ssh/id_rsa" "${NODE_NAME}1"
-        ssh-keygen -y -f ./insecure_private_key > ./insecure_public_key
-
+        # Final check of SSH connectivity
+        echo "Final verification of SSH connectivity between all nodes"
         for i in $(seq 1 $TOTAL_NODES); do
-	    figlet -c "Setting up SSH for ${NODE_NAME}$i"
-            copy_to_node "./insecure_public_key" "/home/vagrant/.ssh/id_rsa.pub" "${NODE_NAME}$i"
-            run_on_node "${NODE_NAME}$i" 'cat /home/vagrant/.ssh/id_rsa.pub >> /home/vagrant/.ssh/authorized_keys'
-            run_on_node "${NODE_NAME}1" "echo uptime|ssh -o StrictHostKeyChecking=no ${PUB_NET}.22${i}"
-        done
-
-        echo "Verifying SSH connectivity between all nodes"
-        # Check if all nodes can connect to each other
-        MAX_RETRY=3
-        for attempt in $(seq 1 $MAX_RETRY); do
-            all_nodes_healthy=true
-
-            for i in $(seq 1 $TOTAL_NODES); do
-                for j in $(seq 1 $TOTAL_NODES); do
-                    echo "Testing SSH from ${NODE_NAME}$i to ${NODE_NAME}$j (attempt $attempt of $MAX_RETRY)..."
-                    if ! run_on_node "${NODE_NAME}$i" "ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 ${NODE_NAME}$j exit 2>/dev/null"; then
-                        echo "WARNING: SSH from ${NODE_NAME}$i to ${NODE_NAME}$j failed"
-                        all_nodes_healthy=false
-
-                        # If this is the last attempt, try to remediate
-                        if [ $attempt -eq $MAX_RETRY ]; then
-	                    figlet -c "Attempting to remediate node ${NODE_NAME}$j..."
-
-                            # First try restarting SSH on the problematic node
-                            run_on_node "${NODE_NAME}$j" "sudo systemctl restart sshd" || true
-
-                            # Wait a moment for SSH to restart
-                            sleep 5
-
-                            # Test again
-                            if ! run_on_node "${NODE_NAME}$i" "ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 ${NODE_NAME}$j exit 2>/dev/null"; then
-	                        figlet -c "Remediation failed. Rebuilding node ${NODE_NAME}$j..."
-                                vagrant destroy -f "${NODE_NAME}$j"
-                                vagrant up "${NODE_NAME}$j"
-
-                                # Reconfigure the rebuilt node
-                                run_on_node "${NODE_NAME}$j" 'sudo pvresize /dev/sda3'
-                                run_on_node "${NODE_NAME}$j" 'sudo lvextend -l +100%FREE /dev/ubuntu-vg/ubuntu-lv'
-                                run_on_node "${NODE_NAME}$j" 'sudo resize2fs /dev/ubuntu-vg/ubuntu-lv'
-                                run_on_node "${NODE_NAME}$j" 'echo "grub-pc grub-pc/install_devices multiselect /dev/sda" | sudo debconf-set-selections'
-                                run_on_node "${NODE_NAME}$j" 'DEBIAN_FRONTEND=noninteractive sudo apt-get update'
-                                run_on_node "${NODE_NAME}$j" 'DEBIAN_FRONTEND=noninteractive sudo apt-get upgrade -y'
-                                run_on_node "${NODE_NAME}$j" 'sudo apt-get install -y net-tools ruby jq chrony'
-                                run_on_node "${NODE_NAME}$j" 'sudo systemctl enable chrony --now'
-                                run_on_node "${NODE_NAME}$j" 'sudo chronyc -a makestep'
-                                run_on_node "${NODE_NAME}$j" "sudo cp /vagrant/hosts /etc/hosts"
-                                run_on_node "${NODE_NAME}$j" "sudo sysctl -w net.ipv6.conf.all.disable_ipv6=1"
-                                run_on_node "${NODE_NAME}$j" "sudo sysctl -w net.ipv6.conf.default.disable_ipv6=1"
-                                run_on_node "${NODE_NAME}$j" "sudo sysctl -w net.ipv6.conf.lo.disable_ipv6=1"
-                                run_on_node "${NODE_NAME}$j" "echo 'net.ipv6.conf.all.disable_ipv6 = 1' | sudo tee -a /etc/sysctl.conf"
-                                run_on_node "${NODE_NAME}$j" "echo 'net.ipv6.conf.default.disable_ipv6 = 1' | sudo tee -a /etc/sysctl.conf"
-                                run_on_node "${NODE_NAME}$j" "echo 'net.ipv6.conf.lo.disable_ipv6 = 1' | sudo tee -a /etc/sysctl.conf"
-
-                                # Set up SSH for the rebuilt node
-                                copy_to_node "./insecure_private_key" "/home/vagrant/.ssh/id_rsa" "${NODE_NAME}$j"
-                                copy_to_node "./insecure_public_key" "/home/vagrant/.ssh/id_rsa.pub" "${NODE_NAME}$j"
-                                run_on_node "${NODE_NAME}$j" 'cat /home/vagrant/.ssh/id_rsa.pub >> /home/vagrant/.ssh/authorized_keys'
-
-                                # Final verification
-                                if ! run_on_node "${NODE_NAME}$i" "ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 ${NODE_NAME}$j exit 2>/dev/null"; then
-                                    echo "ERROR: Failed to establish SSH connectivity to ${NODE_NAME}$j after rebuilding. Exiting."
-                                    exit 1
-                                fi
-                            fi
-                        fi
-                    fi
-                done
+            for j in $(seq 1 $TOTAL_NODES); do
+                echo "Testing SSH from ${NODE_NAME}$i to ${NODE_NAME}$j..."
+                if ! run_on_node "${NODE_NAME}$i" "ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 ${NODE_NAME}$j 'echo SUCCESS' 2>/dev/null"; then
+                    echo "ERROR: SSH from ${NODE_NAME}$i to ${NODE_NAME}$j still failing after all remediation attempts."
+                    echo "Please check the network configuration manually."
+                    exit 1
+                fi
+                echo "SSH from ${NODE_NAME}$i to ${NODE_NAME}$j successful."
             done
-
-            if $all_nodes_healthy; then
-                echo "All nodes can connect to each other via SSH."
-                break
-            fi
-
-            if [ $attempt -lt $MAX_RETRY ]; then
-                echo "Retrying SSH connectivity check in 10 seconds..."
-                sleep 10
-            fi
         done
 
         echo "Script $(basename "$0") has finished"
@@ -316,7 +366,7 @@ generate_hosts_yaml() {
     for i in $(seq 1 $TOTAL_NODES); do
         local host_ip
         if [[ "$LOCATION" == "vagrant" ]]; then
-            host_ip="${PUB_NET}.22${i}"
+            host_ip="${PUB_NET}.${START_RANGE}${i}"
         else
             host_ip=$(ping -c1 ${NODE_NAME}$i|head -1|cut -d\( -f2|cut -d\) -f1)
         fi
@@ -430,6 +480,53 @@ done
 # Set up ansible config
 copy_to_node ansible.cfg ansible.cfg "${NODE_NAME}1"
 
+# Copy cluster.yml from node1
+copy_from_node kubespray/playbooks/cluster.yml cluster.yml "${NODE_NAME}1"
+
+# Modify cluster.yml using awk
+awk '
+NR==1 && /^---/ {
+    print "---"
+    print "- hosts: all"
+    print "  gather_facts: yes"
+    print "  tasks:"
+    print "    - name: Ensure /etc/resolv.conf exists with proper nameservers"
+    print "      copy:"
+    print "        content: |"
+    print "          nameserver 8.8.8.8"
+    print "          nameserver 1.1.1.1"
+    print "          options timeout:2 attempts:3 rotate"
+    print "          search Home"
+    print "        dest: /etc/resolv.conf"
+    print "        force: yes"
+    print "        mode: \"0644\""
+    print "      become: yes"
+    print ""
+    print "    - name: Create stat fact for resolv.conf"
+    print "      stat:"
+    print "        path: /etc/resolv.conf"
+    print "      register: resolvconf_stat"
+    print ""
+    print "    - name: Slurp resolv.conf content"
+    print "      slurp:"
+    print "        src: /etc/resolv.conf"
+    print "      register: resolvconf_slurp"
+    print "      when: resolvconf_stat.stat.exists"
+    print "      "
+    print "    - name: Debug resolvconf variables"
+    print "      debug:"
+    print "        msg: "
+    print "          - \"stat exists: {{ resolvconf_stat.stat.exists }}\""
+    print "          - \"slurp defined: {{ resolvconf_slurp is defined }}\""
+    print ""
+}
+
+!/^---/ {print}
+' cluster.yml > cluster.yml.new
+
+# Copy modified cluster.yml back to node1
+copy_to_node cluster.yml.new kubespray/playbooks/cluster.yml "${NODE_NAME}1"
+
 # Run Ansible playbook
 echo "Run Ansible playbook to install Kubernetes"
 run_on_node "${NODE_NAME}1" "
@@ -437,8 +534,15 @@ run_on_node "${NODE_NAME}1" "
     python3 -m venv /home/vagrant/.py3kubespray &&
     . ./.py3kubespray/bin/activate &&
     cd kubespray &&
+    mkdir -p ./inventory/${INVENTORY_PATH}/group_vars/all &&
+    echo 'resolvconf_mode: none' > ./inventory/${INVENTORY_PATH}/group_vars/all/all.yml &&
+    echo 'dns_mode: none' >> ./inventory/${INVENTORY_PATH}/group_vars/all/all.yml &&
+    echo 'enable_resolv_conf_reset: false' >> ./inventory/${INVENTORY_PATH}/group_vars/all/all.yml &&
+    echo 'networkmanager_enabled:' >> ./inventory/${INVENTORY_PATH}/group_vars/all/all.yml &&
+    echo '  rc: 1' >> ./inventory/${INVENTORY_PATH}/group_vars/all/all.yml &&
     pip install -r requirements.txt &&
-    ansible-playbook -i ./inventory/${INVENTORY_PATH}/hosts.yaml --become --become-user=root cluster.yml"
+    pip install ara &&
+    ansible-playbook -i ./inventory/${INVENTORY_PATH}/hosts.yaml --become --become-user=root cluster.yml --skip-tags resolvconf"
 
 # Setup Kubernetes config
 echo "Copy Kubernetes configuration to the user"

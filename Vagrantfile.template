@@ -10,23 +10,24 @@ Vagrant.configure("2") do |config|
     config.vm.box = "${BOX_NAME}"
     config.vm.box_url = "${BOX_NAME}"
   end
+
   config.vm.provider "virtualbox" do |vb|
     vb.gui = false
     vb.memory = "${RAM_SIZE}"
     vb.cpus = ${CPU_COUNT}
   end
 
-  # Set disk size for each VM
   config.disksize.size = "${DISK_SIZE}"
 
-  # Create ${TOTAL_NODES} VMs with a private network and sequential IP addresses
+  # Create ${TOTAL_NODES} VMs
   (1..${TOTAL_NODES}).each do |i|
     config.vm.define "${NODE_NAME}#{i}" do |node|
-      node.vm.network "public_network", bridge: "${PRIMARY_ADAPTER}", mac: "${MAC_ADDRESS}"
-      node.vm.network "private_network", ip: "${PUB_NET}.22#{i}"
+      if i == 1
+        node.vm.network "public_network", bridge: "${PRIMARY_ADAPTER}", mac: "${MAC_ADDRESS}"
+      else
+        node.vm.network "public_network", bridge: "${PRIMARY_ADAPTER}"
+      end
+      node.vm.network "private_network", ip: "${PUB_NET}.${START_RANGE}#{i}"
     end
   end
-
-  # Create a public network shared among all VMs using bridged network (enp0s25)
-  config.vm.network "public_network", bridge: "${PRIMARY_ADAPTER}"
 end
