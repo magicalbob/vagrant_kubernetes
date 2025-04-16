@@ -100,25 +100,51 @@ class ClusterValidator
 
   def validate_dns_resolution
     puts "✅ Validating DNS resolution..."
-    test_pod_yaml = <<~YAML
-      apiVersion: v1
-      kind: Pod
-      metadata:
-        name: dns-test
-      spec:
-        containers:
-        - name: dns-test
-          image: busybox:1.28
-          command: ['sh', '-c', 'nslookup kubernetes.default.svc.cluster.local']
-    YAML
-    run_command("echo '#{test_pod_yaml}' | kubectl apply -f -")
-    sleep 10
-    dns_test_output = run_command("kubectl logs dns-test")
-    run_command("kubectl delete pod dns-test")
-    unless dns_test_output.include?('kubernetes.default.svc.cluster.local')
+  
+    # Specifically target Flannel pods for DNS testing
+    begin
+      flannel_pods = JSON.parse(run_command("kubectl get pods -n kube-system -l app=flannel -o json"))
+      if flannel_pods['items'].empty?
+        # Try alternative label selectors if the first one doesn't work
+        flannel_pods = JSON.parse(run_command("kubectl get pods -n kube-system -l app.kubernetes.io/name=flannel -o json"))
+      end
+  
+      if flannel_pods['items'].empty?
+        # If we still can't find any, try finding pods with "flannel" in their name
+        pod_list = JSON.parse(run_command("kubectl get pods -n kube-system -o json"))
+        flannel_pods = {"items" => pod_list['items'].select { |pod| pod['metadata']['name'].include?('flannel') }}
+      end
+  
+      if flannel_pods['items'].empty?
+        raise "No Flannel pods found for DNS testing!"
+      end
+  
+      # Find a running Flannel pod
+      test_pod = flannel_pods['items'].find { |pod| pod['status']['phase'] == 'Running' }
+      pod_name = test_pod['metadata']['name']
+      puts "Using Flannel pod #{pod_name} for DNS testing..."
+  
+      # We need to specify the container for multi-container pods
+      container_flag = ""
+      if test_pod['spec']['containers'].length > 1
+        container_flag = "-c kube-flannel"
+      end
+  
+      # Run nslookup from the Flannel pod
+      dns_command = "kubectl exec -n kube-system #{pod_name} #{container_flag} -- nslookup kubernetes.default.svc.cluster.local"
+      dns_test_output = run_command(dns_command)
+  
+      # Check for proper response with IP address
+      if dns_test_output.include?('Address:') && dns_test_output.include?('10.233.0.1')
+        puts "✅ DNS resolution test passed."
+      else
+        puts dns_test_output
+        raise "❌ DNS resolution test failed - incorrect response!"
+      end
+    rescue => e
+      puts "DNS test error: #{e.message}"
       raise "❌ DNS resolution test failed!"
     end
-    puts "✅ DNS resolution test passed."
   end
 
   def validate_etcd
