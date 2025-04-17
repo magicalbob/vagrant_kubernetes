@@ -143,7 +143,51 @@ if [[ "$LOCATION" == "vagrant" ]]; then
 
     if [ $SKIP_UP -eq 0 ] && [ $UP_ONLY -eq 1 ]; then
         echo "Bring up all the nodes without provisioning"
-        vagrant up --no-provision
+        for i in $(seq 1 $TOTAL_NODES); do
+          node="${NODE_NAME}${i}"
+          echo "Bringing up node ${node}"
+          
+          # Attempt to bring up the node (with retry logic)
+          max_attempts=3
+          for attempt in $(seq 1 $max_attempts); do
+            echo "Attempt $attempt of $max_attempts to bring up ${node}"
+            
+            # Run vagrant up and capture its exit status
+            vagrant up --no-provision ${node}
+            up_status=$?
+            
+            if [ $up_status -eq 0 ]; then
+              # Even if command succeeded, verify the VM is actually running
+              status=$(vagrant status ${node} --machine-readable | grep ",state," | cut -d, -f4)
+              
+              if [ "$status" = "running" ]; then
+                # Double-check with SSH connectivity test
+                if vagrant ssh ${node} -c "echo 'SSH connection successful'" >/dev/null 2>&1; then
+                  echo "✅ Node ${node} is up and running with verified SSH access"
+                  break
+                else
+                  echo "⚠️ Node ${node} appears to be running but SSH connection failed"
+                fi
+              else
+                echo "⚠️ Node ${node} failed to start properly. Status: ${status}"
+              fi
+            else
+              echo "⚠️ Vagrant up command failed with exit code: ${up_status}"
+            fi
+            
+            # If we reach here, there was an issue. Try again if not last attempt
+            if [ $attempt -lt $max_attempts ]; then
+              echo "Waiting 30 seconds before retrying..."
+              sleep 30
+              
+              # Try to halt the VM if it's in a bad state
+              vagrant halt ${node} --force >/dev/null 2>&1 || true
+            else
+              echo "❌ ERROR: Failed to bring up node ${node} after $max_attempts attempts"
+              exit 1
+            fi
+          done
+        done
 
         echo "Set up ssh between the nodes"
         ssh-keygen -y -f ./insecure_private_key > ./insecure_public_key
