@@ -231,8 +231,7 @@ if [[ "$LOCATION" == "vagrant" ]]; then
             
             if [ $PING_SUCCESS -eq 0 ]; then
                 echo "Could not reach ${NODE_NAME}$i after $MAX_PING_ATTEMPTS attempts. Rebuilding VM..."
-                vagrant destroy -f "${NODE_NAME}$i"
-                vagrant up "${NODE_NAME}$i"
+                vagrant reload "${NODE_NAME}$i --no-provision"
                 
                 # Check again after rebuild
                 if ! run_on_node "${NODE_NAME}1" "ping -c 1 ${PUB_NET}.${START_RANGE}${i}" > /dev/null 2>&1; then
@@ -295,8 +294,7 @@ if [[ "$LOCATION" == "vagrant" ]]; then
                             # Test again
                             if ! run_on_node "${NODE_NAME}$i" "ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 ${NODE_NAME}$j exit 2>/dev/null"; then
                                 echo "Remediation failed. Rebuilding node ${NODE_NAME}$j..."
-                                vagrant destroy -f "${NODE_NAME}$j"
-                                vagrant up "${NODE_NAME}$j"
+                                vagrant reload "${NODE_NAME}$j --no-provision"
 
                                 echo "Waiting 30 seconds for VM to fully initialize..."
                                 sleep 30
