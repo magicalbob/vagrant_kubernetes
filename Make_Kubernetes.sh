@@ -350,7 +350,10 @@ if [[ "$LOCATION" == "vagrant" ]]; then
             retry_command 3 5 'sudo chown root:root /etc/netplan/01-netcfg.yaml' "${NODE_NAME}$i"
             retry_command 3 5 'sudo netplan generate' "${NODE_NAME}$i"
             retry_command 3 5 'sudo netplan apply' "${NODE_NAME}$i"
-            retry_command 3 5 'echo "* * * * * sudo chronyc makestep"|crontab -' "${NODE_NAME}$i"
+
+            echo "Configuring chrony on ${NODE_NAME}$i"
+            copy_to_node "chrony.conf" "chrony.conf" "${NODE_NAME}$i"
+            retry_command 3 5 'sudo cp -v chrony.conf /etc/chrony/chrony.conf' "${NODE_NAME}$i"
             
             echo "Installing packages on ${NODE_NAME}$i"
             retry_command 3 5 'echo "grub-pc grub-pc/install_devices multiselect /dev/sda" | sudo debconf-set-selections' "${NODE_NAME}$i"
