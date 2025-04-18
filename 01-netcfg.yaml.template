@@ -1,0 +1,20 @@
+network:
+  version: 2
+  renderer: networkd
+  ethernets:
+    eth0:
+      dhcp4: true
+      dhcp4-overrides:
+        route-metric: 200
+      nameservers:
+        addresses: [8.8.8.8, 1.1.1.1]
+        search: [cluster.local]
+    eth1:
+      dhcp4: false
+    eth2:
+      addresses:
+        - ${PUB_NET}.${START_RANGE}${i}/24
+      dhcp4: false
+      nameservers:
+        addresses: [8.8.8.8, 1.1.1.1]
+        search: [cluster.local]
