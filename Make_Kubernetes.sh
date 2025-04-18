@@ -579,9 +579,21 @@ run_on_node "${NODE_NAME}1" "
     mkdir -p ./inventory/${INVENTORY_PATH}/group_vars/all &&
     echo 'resolvconf_mode: none' > ./inventory/${INVENTORY_PATH}/group_vars/all/all.yml &&
     echo 'dns_mode: none' >> ./inventory/${INVENTORY_PATH}/group_vars/all/all.yml &&
-    echo 'enable_resolv_conf_reset: false' >> ./inventory/${INVENTORY_PATH}/group_vars/all/all.yml &&
+    echo 'enable_resolv_conf_update: false' >> ./inventory/${INVENTORY_PATH}/group_vars/all/all.yml &&
     echo 'networkmanager_enabled:' >> ./inventory/${INVENTORY_PATH}/group_vars/all/all.yml &&
     echo '  rc: 1' >> ./inventory/${INVENTORY_PATH}/group_vars/all/all.yml &&
+    # Add kube-apiserver configurations
+    echo 'kube_kubeadm_apiserver_extra_args:' >> ./inventory/${INVENTORY_PATH}/group_vars/all/all.yml &&
+    echo '  request-timeout: "3m0s"' >> ./inventory/${INVENTORY_PATH}/group_vars/all/all.yml &&
+    echo 'kube_apiserver_resources:' >> ./inventory/${INVENTORY_PATH}/group_vars/all/all.yml &&
+    echo '  requests:' >> ./inventory/${INVENTORY_PATH}/group_vars/all/all.yml &&
+    echo '    cpu: 500m' >> ./inventory/${INVENTORY_PATH}/group_vars/all/all.yml &&
+    echo '    memory: 1Gi' >> ./inventory/${INVENTORY_PATH}/group_vars/all/all.yml &&
+    # Add etcd configurations
+    echo 'etcd_quota_backend_bytes: 8589934592' >> ./inventory/${INVENTORY_PATH}/group_vars/all/all.yml &&
+    echo 'etcd_max_request_bytes: 33554432' >> ./inventory/${INVENTORY_PATH}/group_vars/all/all.yml &&
+    echo 'etcd_compaction_batch_limit: 1000' >> ./inventory/${INVENTORY_PATH}/group_vars/all/all.yml &&
+    echo 'etcd_max_txn_ops: 10000' >> ./inventory/${INVENTORY_PATH}/group_vars/all/all.yml
     pip install -r requirements.txt &&
     pip install ara &&
     ansible-playbook -i ./inventory/${INVENTORY_PATH}/hosts.yaml --become --become-user=root cluster.yml --skip-tags resolvconf"
