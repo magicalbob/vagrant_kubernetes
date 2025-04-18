@@ -19,6 +19,8 @@ Vagrant.configure("2") do |config|
 
   config.disksize.size = "${DISK_SIZE}"
 
+  config.vm.boot_timeout = 600
+
   # Create ${TOTAL_NODES} VMs
   (1..${TOTAL_NODES}).each do |i|
     config.vm.define "${NODE_NAME}#{i}" do |node|
