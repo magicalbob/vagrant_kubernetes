@@ -13,3 +13,4 @@ terraform/pm?-cloudinit.cfg
 terraform/terraform.tfstate.d/
 terraform/.terraform
 01-netcfg.yaml
+cluster.yml*

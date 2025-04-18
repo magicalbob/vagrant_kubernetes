@@ -526,9 +526,9 @@ done
 copy_to_node ansible.cfg ansible.cfg "${NODE_NAME}1"
 
 # Copy cluster.yml from node1
-copy_from_node kubespray/playbooks/cluster.yml cluster.yml "${NODE_NAME}1"
+copy_from_node kubespray/playbooks/cluster.yml cluster.yml.template "${NODE_NAME}1"
 
-# Modify cluster.yml using awk
+# Modify cluster.yml.template using awk
 awk '
 NR==1 && /^---/ {
     print "---"
@@ -567,10 +567,10 @@ NR==1 && /^---/ {
 }
 
 !/^---/ {print}
-' cluster.yml > cluster.yml.new
+' cluster.yml.template > cluster.yml
 
 # Copy modified cluster.yml back to node1
-copy_to_node cluster.yml.new kubespray/playbooks/cluster.yml "${NODE_NAME}1"
+copy_to_node cluster.yml kubespray/playbooks/cluster.yml "${NODE_NAME}1"
 
 # Run Ansible playbook
 echo "Run Ansible playbook to install Kubernetes"
