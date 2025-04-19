@@ -369,6 +369,9 @@ if [[ "$LOCATION" == "vagrant" ]]; then
             retry_command 3 5 'sudo unlink /etc/resolv.conf' "${NODE_NAME}$i"
             copy_to_node "resolv.conf" "resolv.conf" "${NODE_NAME}$i"
             retry_command 3 5 'sudo cp -v resolv.conf /etc/resolv.conf' "${NODE_NAME}$i"
+
+            echo "Enabling iSCSI services on ${NODE_NAME}$i"
+            retry_command 3 5 'sudo systemctl enable --now iscsid open-iscsi' "${NODE_NAME}$i"
         done
 
         for i in $(seq 1 $TOTAL_NODES); do
@@ -547,6 +550,21 @@ NR==1 && /^---/ {
     print "        mode: \"0644\""
     print "      become: yes"
     print ""
+    print "    - name: Ensure /run/systemd/resolve directory exists"
+    print "      file:"
+    print "        path: /run/systemd/resolve"
+    print "        state: directory"
+    print "        mode: \"0755\""
+    print "      become: yes"
+    print ""
+    print "    - name: Create symbolic link from /run/systemd/resolve/resolv.conf to /etc/resolv.conf"
+    print "      file:"
+    print "        src: /etc/resolv.conf"
+    print "        dest: /run/systemd/resolve/resolv.conf"
+    print "        state: link"
+    print "        force: yes"
+    print "      become: yes"
+    print ""
     print "    - name: Create stat fact for resolv.conf"
     print "      stat:"
     print "        path: /etc/resolv.conf"
@@ -563,6 +581,7 @@ NR==1 && /^---/ {
     print "        msg: "
     print "          - \"stat exists: {{ resolvconf_stat.stat.exists }}\""
     print "          - \"slurp defined: {{ resolvconf_slurp is defined }}\""
+    print "          - \"symlink created: {{ ansible_path }}/run/systemd/resolve/resolv.conf is symlink\""
     print ""
 }
 

@@ -1,8 +1,8 @@
 {
   "kube_version": "v1.31.4",
   "kubespray_version": "v2.27.0",
-  "control_nodes": 3,
-  "worker_nodes": 4,
+  "control_nodes": 1,
+  "worker_nodes": 2,
   "ram_size":  32768,
   "cpu_count" : 8,
   "pub_net": "192.168.56",
