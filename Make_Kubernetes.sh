@@ -620,9 +620,9 @@ run_on_node "${NODE_NAME}1" "
     echo 'etcd_compaction_batch_limit: 1000' >> ./inventory/${INVENTORY_PATH}/group_vars/all/all.yml &&
     echo 'etcd_max_txn_ops: 10000' >> ./inventory/${INVENTORY_PATH}/group_vars/all/all.yml
     # Check if metrics_server_enabled exists in the file and sets it to true if it does
-    sed -i 's/^metrics_server_enabled: .*$/metrics_server_enabled: true/' kubespray/inventory/${INVENTORY_PATH}/group_vars/k8s_cluster/addons.yml &&
+    sed -i 's/^metrics_server_enabled: .*$/metrics_server_enabled: true/' ./inventory/${INVENTORY_PATH}/group_vars/k8s_cluster/addons.yml &&
     # This adds metrics_server_enabled: true to the end of the file if it doesn't exist
-    grep -q "^metrics_server_enabled:" kubespray/inventory/${INVENTORY_PATH}/group_vars/k8s_cluster/addons.yml || echo "metrics_server_enabled: true" >> kubespray/inventory/${INVENTORY_PATH}/group_vars/k8s_cluster/addons.yml &&
+    grep -q "^metrics_server_enabled:" ./inventory/${INVENTORY_PATH}/group_vars/k8s_cluster/addons.yml || echo "metrics_server_enabled: true" >> ./inventory/${INVENTORY_PATH}/group_vars/k8s_cluster/addons.yml &&
     pip install -r requirements.txt &&
     pip install ara &&
     ansible-playbook -i ./inventory/${INVENTORY_PATH}/hosts.yaml --become --become-user=root cluster.yml --skip-tags resolvconf"
