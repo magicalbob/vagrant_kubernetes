@@ -353,6 +353,7 @@ if [[ "$LOCATION" == "vagrant" ]]; then
 
             echo "Configuring chrony on ${NODE_NAME}$i"
             copy_to_node "chrony.conf" "chrony.conf" "${NODE_NAME}$i"
+            retry_command 3 5 'sudo mkdir -p /etc/chrony' "${NODE_NAME}$i"
             retry_command 3 5 'sudo cp -v chrony.conf /etc/chrony/chrony.conf' "${NODE_NAME}$i"
             
             echo "Installing packages on ${NODE_NAME}$i"
@@ -369,6 +370,8 @@ if [[ "$LOCATION" == "vagrant" ]]; then
             retry_command 3 5 'sudo unlink /etc/resolv.conf' "${NODE_NAME}$i"
             copy_to_node "resolv.conf" "resolv.conf" "${NODE_NAME}$i"
             retry_command 3 5 'sudo cp -v resolv.conf /etc/resolv.conf' "${NODE_NAME}$i"
+            retry_command 3 5 'sudo mkdir -p /run/systemd/resolv' "${NODE_NAME}$i"
+            retry_command 3 5 'sudo cp -v resolv.conf /run/systemd/resolv/resolv.conf' "${NODE_NAME}$i"
 
             echo "Enabling iSCSI services on ${NODE_NAME}$i"
             retry_command 3 5 'sudo systemctl enable --now iscsid open-iscsi' "${NODE_NAME}$i"
@@ -576,12 +579,12 @@ NR==1 && /^---/ {
     print "      register: resolvconf_slurp"
     print "      when: resolvconf_stat.stat.exists"
     print "      "
-    print "    - name: Debug resolvconf variables"
+    print "    - name: Debug resolvconf variable"s
     print "      debug:"
-    print "        msg: "
+    print "        msg:"
     print "          - \"stat exists: {{ resolvconf_stat.stat.exists }}\""
     print "          - \"slurp defined: {{ resolvconf_slurp is defined }}\""
-    print "          - \"symlink created: {{ ansible_path }}/run/systemd/resolve/resolv.conf is symlink\""
+    print "          - \"symlink created: {{ resolvconf_stat.stat.islnk }}\""
     print ""
 }
 
@@ -616,6 +619,10 @@ run_on_node "${NODE_NAME}1" "
     echo 'etcd_max_request_bytes: 33554432' >> ./inventory/${INVENTORY_PATH}/group_vars/all/all.yml &&
     echo 'etcd_compaction_batch_limit: 1000' >> ./inventory/${INVENTORY_PATH}/group_vars/all/all.yml &&
     echo 'etcd_max_txn_ops: 10000' >> ./inventory/${INVENTORY_PATH}/group_vars/all/all.yml
+    # Check if metrics_server_enabled exists in the file and sets it to true if it does
+    sed -i 's/^metrics_server_enabled: .*$/metrics_server_enabled: true/' kubespray/inventory/${INVENTORY_PATH}/group_vars/k8s_cluster/addons.yml &&
+    # This adds metrics_server_enabled: true to the end of the file if it doesn't exist
+    grep -q "^metrics_server_enabled:" kubespray/inventory/${INVENTORY_PATH}/group_vars/k8s_cluster/addons.yml || echo "metrics_server_enabled: true" >> kubespray/inventory/${INVENTORY_PATH}/group_vars/k8s_cluster/addons.yml &&
     pip install -r requirements.txt &&
     pip install ara &&
     ansible-playbook -i ./inventory/${INVENTORY_PATH}/hosts.yaml --become --become-user=root cluster.yml --skip-tags resolvconf"
