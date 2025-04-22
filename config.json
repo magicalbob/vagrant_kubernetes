@@ -3,13 +3,13 @@
   "kubespray_version": "v2.27.0",
   "control_nodes": 1,
   "worker_nodes": 2,
-  "ram_size":  32768,
-  "cpu_count" : 8,
+  "ram_size":  2048,
+  "cpu_count" : 2,
   "pub_net": "192.168.56",
   "start_range": "20",
   "node_name": "node",
   "kube_network_plugin": "flannel",
-  "box_name": "bento/ubuntu-24.04",
+  "box_name": "bento/ubuntu-22.04",
   "disk_size": "150GB",
-  "mac_address": "08:00:27:9e:87:a7"
+  "mac_address": "08:00:27:9e:87:aa"
 }

@@ -6,8 +6,9 @@ This project sets up a Kubernetes (K8s) cluster either in a group of Vagrant box
 
 The main script `Make_Kubernetes.sh` orchestrates the entire setup process and supports both modes. It accepts the following commands:
 
-- **UP_ONLY**: Brings up the Vagrant nodes and provisions them, where `--location vagrant` is used. Mandatory in this case.
-- **SKIP_UP**: Skips bringing up the Vagrant nodes and proceeds directly to deploying Kubernetes on them (assumes nodes are already up). Optional if `--location physical`, otherwise mandatory.
+- **init**: Creates the Vagrantfile, where `--location vagrant` is used. Mandatory in this case.
+- **up**: Brings up the Vagrant nodes and provisions the OS on them, where `--location vagrant` is used. Mandatory in this case.
+- **provision**: Provisions Kubernetes on the nodes using `kubespray` (assumes nodes are already up). Optional if `--location physical`, otherwise mandatory.
 
 ### Usage
 
@@ -64,7 +65,7 @@ The cluster settings are defined in `config.json`. This file specifies:
 - **node_name**: Name prefix of the nodes. Will be set and used by Vagrant, but just used for physical.
 - **kube_network_plugin**: "cilium" or `calico`.
 - **box_name**: "bento/ubuntu-22.04". Name of the Vagrant box when location is vagrant.
-- **disk_size**: Disk size of each node (default: 100GB).
+- **disk_size**: Disk size of each node (default: 100GB). Ignored if architecture is arm64..
 - **mac_address**: MAC address of each node.
 
 ### Example config.json
@@ -88,8 +89,8 @@ The cluster settings are defined in `config.json`. This file specifies:
 
 ### Details
 
-- The `Vagrantfile` is created from a `Vagrantfile.template`. It only includes base definitions of the boxes. Provisioning (like update, upgrades and installs of dependencies) is done by the `Make_Kubernetes.sh` script. Vagrant plugin [vagrant-disksize](https://github.com/sprotheroe/vagrant-disksize) is installed to handle disk size.
-- It automatically selects an arm64 image if running on an arm64 platform (e.g., Apple Silicon Macs), or an x86 image otherwise.
+- The `Vagrantfile` is created from a `Vagrantfile.template`. It only includes base definitions of the boxes. Provisioning (like update, upgrades and installs of dependencies) is done by the `Make_Kubernetes.sh` script. Vagrant plugin [vagrant-disksize](https://github.com/sprotheroe/vagrant-disksize) is installed to handle disk size unless the architecture is arm64.
+- It automatically selects an arm64 image if running on an arm64 platform (e.g., Apple Silicon Macs), or an x86 image otherwise. The plugin-parallels is used for arm64, virtualbox otherwise.
 - The `Make_Kubernetes.sh` script uses the Vagrant insecure private key (`~/.vagrant.d/insecure_private_key`) to allow SSH into all the nodes.
 - Before executing Kubespray on the first node, the script ensures SSH access is set up from node1 to all other nodes.
 

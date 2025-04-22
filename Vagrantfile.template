@@ -2,22 +2,8 @@
 # vi: set ft=ruby :
 
 Vagrant.configure("2") do |config|
-  # Common configuration for all VMs
-  if `uname -m`.strip == "arm64"
-    config.vm.box = "${BOX_NAME}-arm64"
-    config.vm.box_url = "${BOX_NAME}-arm64"
-  else
-    config.vm.box = "${BOX_NAME}"
-    config.vm.box_url = "${BOX_NAME}"
-  end
-
-  config.vm.provider "virtualbox" do |vb|
-    vb.gui = false
-    vb.memory = "${RAM_SIZE}"
-    vb.cpus = ${CPU_COUNT}
-  end
-
-  config.disksize.size = "${DISK_SIZE}"
+  # Insert the correct provider configuration
+  ${VAGRANT_PROVIDER_BLOCK}
 
   config.vm.boot_timeout = 600
 

@@ -2,6 +2,7 @@
 
 # Parse command line arguments
 LOCATION=""
+INIT_ONLY=0
 UP_ONLY=0
 SKIP_UP=0
 
@@ -11,11 +12,15 @@ while [[ $# -gt 0 ]]; do
             LOCATION="$2"
             shift 2
             ;;
-        UP_ONLY)
+	init)
+	    INIT_ONLY=1
+            shift
+            ;;
+        up)
             UP_ONLY=1
             shift
             ;;
-        SKIP_UP)
+        provision)
             SKIP_UP=1
             shift
             ;;
@@ -102,9 +107,6 @@ retry_command() {
     return 1
 }
 
-# Common configuration
-cp ~/.vagrant.d/insecure_private_key ./insecure_private_key
-
 echo "Read configuration from config.json"
 CONTROL_NODES=$(jq -r '.control_nodes' config.json)
 WORKER_NODES=$(jq -r '.worker_nodes' config.json)
@@ -126,20 +128,53 @@ export CONTROL_NODES WORKER_NODES TOTAL_NODES RAM_SIZE CPU_COUNT PUB_NET START_R
 
 # Vagrant-specific setup
 if [[ "$LOCATION" == "vagrant" ]]; then
-    echo "Install vagrant plugin for disk size"
-    vagrant plugin install vagrant-disksize
+    # Use the vagrant insecure key
+    cp ~/.vagrant.d/insecure_private_key ./insecure_private_key
 
-    echo "Work out primary network adapter for Mac or linux"
-    if [[ $(uname) == "Darwin" ]]; then
+    echo "Determine architecture and provider block for Vagrantfile"
+    if [[ $(uname -m) == "arm64" ]]; then
         PRIMARY_ADAPTER=$(route get default | grep interface | awk '{print $2}')
-    elif [[ $(uname) == "Linux" ]]; then
+        VAGRANT_DEFAULT_PROVIDER="parallels"
+        export VAGRANT_PROVIDER_BLOCK="
+    config.vm.box = \"${BOX_NAME}-arm64\"
+    config.vm.box_url = \"${BOX_NAME}-arm64\"
+
+    config.vm.provider \"parallels\" do |prl|
+      prl.memory = \"${RAM_SIZE}\"
+      prl.cpus = ${CPU_COUNT}
+    end
+    "
+    else
+        echo "Install vagrant plugin for disk size"
+        vagrant plugin install vagrant-disksize
+
         PRIMARY_ADAPTER=$(ip route get 1 | awk '{print $5; exit}')
+        VAGRANT_DEFAULT_PROVIDER="virtualbox"
+        export VAGRANT_PROVIDER_BLOCK="
+      config.vm.box = \"${BOX_NAME}\"
+      config.vm.box_url = \"${BOX_NAME}\"
+
+      config.disksize.size = \"${DISK_SIZE}\"
+
+      config.vm.provider \"virtualbox\" do |vb|
+        vb.gui = false
+        vb.memory = \"${RAM_SIZE}\"
+        vb.cpus = ${CPU_COUNT}
+      end\n
+    "
     fi
     echo "Primary Adapter: ${PRIMARY_ADAPTER}"
-    export PRIMARY_ADAPTER
+    echo "Vagrant provider: ${VAGRANT_DEFAULT_PROVIDER}"
+    export PRIMARY_ADAPTER VAGRANT_DEFAULT_PROVIDER
 
     echo "Create Vagrantfile from template"
     envsubst < Vagrantfile.template > Vagrantfile
+
+    if [ $INIT_ONLY -eq 1 ]; then
+        echo "Initialisation done"
+        echo "Script $(basename "$0") has finished"
+	exit 0
+    fi
 
     if [ $SKIP_UP -eq 0 ] && [ $UP_ONLY -eq 1 ]; then
         echo "Bring up all the nodes without provisioning"
@@ -153,7 +188,7 @@ if [[ "$LOCATION" == "vagrant" ]]; then
             echo "Attempt $attempt of $max_attempts to bring up ${node}"
             
             # Run vagrant up and capture its exit status
-            vagrant up --no-provision ${node}
+            vagrant up --no-provision --provider=${VAGRANT_DEFAULT_PROVIDER} ${node}
             up_status=$?
             
             if [ $up_status -eq 0 ]; then
@@ -231,7 +266,7 @@ if [[ "$LOCATION" == "vagrant" ]]; then
             
             if [ $PING_SUCCESS -eq 0 ]; then
                 echo "Could not reach ${NODE_NAME}$i after $MAX_PING_ATTEMPTS attempts. Rebuilding VM..."
-                vagrant reload "${NODE_NAME}$i --no-provision"
+                vagrant reload "${NODE_NAME}$i --no-provision --provider=${VAGRANT_DEFAULT_PROVIDER}"
                 
                 # Check again after rebuild
                 if ! run_on_node "${NODE_NAME}1" "ping -c 1 ${PUB_NET}.${START_RANGE}${i}" > /dev/null 2>&1; then
@@ -294,7 +329,7 @@ if [[ "$LOCATION" == "vagrant" ]]; then
                             # Test again
                             if ! run_on_node "${NODE_NAME}$i" "ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 ${NODE_NAME}$j exit 2>/dev/null"; then
                                 echo "Remediation failed. Rebuilding node ${NODE_NAME}$j..."
-                                vagrant reload "${NODE_NAME}$j --no-provision"
+                                vagrant reload "${NODE_NAME}$j --no-provision --provider=${VAGRANT_DEFAULT_PROVIDER}"
 
                                 echo "Waiting 30 seconds for VM to fully initialize..."
                                 sleep 30
@@ -406,6 +441,12 @@ if [[ "$LOCATION" == "vagrant" ]]; then
         echo "Script $(basename "$0") has finished"
         exit 0
     fi
+fi
+
+if [ $INIT_ONLY -eq 1 ]; then
+    echo "init of non-vagrant installation makes no sense!"
+        echo "Script $(basename "$0") has finished"
+    exit 1
 fi
 
 # Generate hosts.yaml content for both vagrant and physical
