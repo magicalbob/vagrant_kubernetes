@@ -14,7 +14,7 @@ pexpect==4.9.0
 prompt_toolkit==3.0.50
 ptyprocess==0.7.0
 pure_eval==0.2.3
-Pygments==2.19.1
+Pygments==2.19.2
 six==1.17.0
 stack-data==0.6.3
 traitlets==5.14.3
