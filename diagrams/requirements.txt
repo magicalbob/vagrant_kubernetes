@@ -3,7 +3,7 @@ decorator==5.2.1
 diagrams==0.24.4
 exceptiongroup==1.2.2
 executing==2.1.0
-graphviz==0.20.3
+graphviz==0.21
 ipython==9.0.2
 jedi==0.19.2
 Jinja2==3.1.6
