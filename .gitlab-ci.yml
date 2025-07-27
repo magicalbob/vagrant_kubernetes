@@ -31,7 +31,7 @@ validate_cluster:
   image: docker.ellisbs.co.uk:5190/ubuntu:24.04
   stage: validate_cluster
   tags:
-    - linux
+    - t7610
   timeout: 1h
   script:
     - cat config.json
@@ -61,7 +61,7 @@ restore_cluster:
   image: docker.ellisbs.co.uk:5190/ubuntu:24.04
   stage: restore_cluster
   tags:
-    - linux
+    - t7610
   timeout: 1h
   script:
     - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T Backup_Restore.sh config.json $TEST_TARGET:Documents/src/test/
@@ -82,7 +82,7 @@ terraform_apply:
   image: docker.ellisbs.co.uk:5190/ubuntu:24.04
   stage: terraform_apply
   tags:
-    - linux
+    - t7610
   timeout: 1h
   script:
     - if ! curl -f http://$NODE1:8006 > /dev/null 2>&1; then echo "Sorry proxmox not available"; exit 0; fi
@@ -106,7 +106,7 @@ Make_Proxmox_K8S:
   image: docker.ellisbs.co.uk:5190/ubuntu:24.04
   stage: Make_Proxmox_K8S
   tags:
-    - linux
+    - t7610
   timeout: 1h
   script:
     - if ! curl -f http://$NODE1:8006 > /dev/null 2>&1; then echo "Sorry proxmox not available"; exit 0; fi
