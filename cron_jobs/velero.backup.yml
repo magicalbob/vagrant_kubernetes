@@ -51,7 +51,7 @@ spec:
               /usr/local/bin/velero backup create $BACKUP_NAME --include-cluster-resources=true;
             env:
             - name: AWS_ENDPOINT_URL
-              value: http://192.168.0.14:4566
+              value: http://192.168.0.3:4566
             - name: AWS_SHARED_CREDENTIALS_FILE
               value: /root/.aws/credentials
             - name: AWS_CONFIG_FILE

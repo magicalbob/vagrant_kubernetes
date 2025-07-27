@@ -3,7 +3,7 @@
 set -e
 
 function aws() {
-  command aws --endpoint-url http://192.168.0.14:4566 "$@"
+  command aws --endpoint-url http://192.168.0.3:4566 "$@"
 }
 
 # Parse arguments

@@ -9,7 +9,7 @@ CREDENTIALS_FILE="velero-credentials"
 VELERO_DEPLOYMENT="deployment/velero"
 NAMESPACE="velero"
 AWS_REGION="eu-west-2"
-S3_URL="http://192.168.0.14:4566"
+S3_URL="http://192.168.0.3:4566"
 BUCKET_NAME="test"
 
 # Check if Velero CLI is already installed
