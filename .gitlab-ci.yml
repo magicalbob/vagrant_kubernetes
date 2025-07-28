@@ -67,7 +67,7 @@ restore_cluster:
     - sudo scp -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T Backup_Restore.sh config.json $TEST_TARGET:Documents/src/test/
     - sudo apt-get update && sudo apt-get install -y jq
     - export NODE_NAME="$(jq -r '.node_name' config.json)1"
-    - sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET "cd Documents/src/test/ && vagrant ssh -c 'ssh -o StrictHostKeyChecking=no pm2  mkdir -p /home/vagrant/k8s_postgres/postgresql-data' $NODE_NAME"
+    - sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET "cd Documents/src/test/ && vagrant ssh pm4 -c \"if [ -f /vagrant/jenkins.backup ]; then tar xzf /vagrant/jenkins.backup; fi\""
     - sudo ssh -o StrictHostKeyChecking=no -i ~/.ssh/the_way -T $TEST_TARGET "cd Documents/src/test/ && chmod +x Backup_Restore.sh && vagrant ssh -c 'cd /vagrant && ./Backup_Restore.sh' $NODE_NAME"
   dependencies:
     - validate_cluster
