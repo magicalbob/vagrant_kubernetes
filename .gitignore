@@ -12,3 +12,4 @@ diagrams/venv
 terraform/pm?-cloudinit.cfg
 terraform/terraform.tfstate.d/
 terraform/.terraform
+.chunkwrap_state
